@@ -1,9 +1,16 @@
-// Basic Canvas 2D renderer
-// Draws the ship as a triangle, camera follows the ship.
+// Canvas 2D renderer with in-canvas perspective projection
+// World rotates so ship faces up. Perspective foreshortens objects ahead.
+
+import { getCamera } from './camera.js';
+import { drawStarfield } from './starfield.js';
 
 const SHIP_SIZE = 20;
 const GRID_SPACING = 200;
-const GRID_COLOR = '#1a1a2e';
+const GRID_FADE_DIST = 1500; // grid fades out beyond this distance
+
+// Perspective: virtual camera height above the plane.
+// Higher = subtler perspective. Lower = more dramatic.
+const CAM_HEIGHT = 600;
 
 export function initRenderer(canvas) {
   const ctx = canvas.getContext('2d');
@@ -17,34 +24,123 @@ function resize(canvas) {
   canvas.height = window.innerHeight;
 }
 
+// Project a world-relative point (already rotated so +Y = ahead)
+// to screen coordinates with perspective.
+// ry: distance ahead of ship (positive = ahead = up on screen)
+// rx: lateral offset (positive = right)
+// Returns {sx, sy, scale} or null if behind camera.
+function project(rx, ry, cam) {
+  // ry is in "ship forward" space. Map to depth:
+  // The ship is at screen position cam.screenY.
+  // Points ahead (ry > 0) go toward the top.
+  // Perspective: scale = CAM_HEIGHT / (CAM_HEIGHT + ry_offset)
+  // where ry_offset shifts so the vanishing point is above the screen.
+  const depth = CAM_HEIGHT + ry * 0.5; // ry > 0 (ahead) increases depth → smaller scale
+  if (depth <= 0) return null;
+
+  const scale = CAM_HEIGHT / depth;
+  const sx = cam.screenX + rx * scale;
+  const sy = cam.screenY - ry * scale;
+  return { sx, sy, scale };
+}
+
 export function render(ctx, canvas, ship, input) {
   const w = canvas.width;
   const h = canvas.height;
+  const cam = getCamera(ship, w, h);
 
-  // Clear
   ctx.fillStyle = '#0a0a1a';
   ctx.fillRect(0, 0, w, h);
 
-  // Camera offset: ship at center of screen
-  const camX = ship.x - w / 2;
-  const camY = ship.y - h / 2;
+  // Draw starfield (subtle parallax, no heavy perspective)
+  drawStarfieldLayer(ctx, w, h, ship, cam);
 
-  // Draw grid (provides sense of movement)
-  drawGrid(ctx, w, h, camX, camY);
+  // Draw grid with perspective
+  drawGrid(ctx, w, h, ship, cam);
 
-  // Draw thrusters behind ship layer
-  drawThrusters(ctx, w, h, ship, input);
+  // Draw thrusters (screen space, ship faces up)
+  drawThrusters(ctx, cam.screenX, cam.screenY, input);
 
-  // Draw ship
+  // Draw ship (fixed screen position, facing up)
+  drawShip(ctx, cam.screenX, cam.screenY);
+}
+
+function worldToShipRelative(wx, wy, ship) {
+  const dx = wx - ship.x;
+  const dy = wy - ship.y;
+  const cos = Math.cos(ship.angle);
+  const sin = Math.sin(ship.angle);
+  return {
+    rx: -(dx * sin - dy * cos),      // right of ship (positive = starboard)
+    ry: dx * cos + dy * sin,       // ahead of ship (positive = forward)
+  };
+}
+
+function drawStarfieldLayer(ctx, w, h, ship, cam) {
+  // Starfield with mild parallax, drawn flat (no perspective) for background feel
   ctx.save();
-  ctx.translate(w / 2, h / 2);
-  ctx.rotate(ship.angle);
+  ctx.translate(cam.screenX, cam.screenY);
+  ctx.rotate(-ship.angle + Math.PI / 2);
+  drawStarfield(ctx, w * 2, h * 2, ship.x, ship.y);
+  ctx.restore();
+}
+
+function drawGrid(ctx, w, h, ship, cam) {
+  ctx.lineWidth = 1;
+
+  const extent = 1500;
+  const startX = Math.floor((ship.x - extent) / GRID_SPACING) * GRID_SPACING;
+  const startY = Math.floor((ship.y - extent) / GRID_SPACING) * GRID_SPACING;
+  const endX = ship.x + extent;
+  const endY = ship.y + extent;
+
+  for (let gx = startX; gx <= endX; gx += GRID_SPACING) {
+    drawWorldLine(ctx, gx, ship.y - extent, gx, ship.y + extent, ship, cam);
+  }
+  for (let gy = startY; gy <= endY; gy += GRID_SPACING) {
+    drawWorldLine(ctx, ship.x - extent, gy, ship.x + extent, gy, ship, cam);
+  }
+}
+
+function drawWorldLine(ctx, x1, y1, x2, y2, ship, cam) {
+  const steps = 16;
+  for (let i = 0; i < steps; i++) {
+    const t0 = i / steps;
+    const t1 = (i + 1) / steps;
+    const wx0 = x1 + (x2 - x1) * t0;
+    const wy0 = y1 + (y2 - y1) * t0;
+    const wx1 = x1 + (x2 - x1) * t1;
+    const wy1 = y1 + (y2 - y1) * t1;
+
+    const r0 = worldToShipRelative(wx0, wy0, ship);
+    const r1 = worldToShipRelative(wx1, wy1, ship);
+    const p0 = project(r0.rx, r0.ry, cam);
+    const p1 = project(r1.rx, r1.ry, cam);
+    if (!p0 || !p1) continue;
+
+    // Fade based on average distance from ship
+    const dist = (Math.sqrt(r0.rx * r0.rx + r0.ry * r0.ry) + Math.sqrt(r1.rx * r1.rx + r1.ry * r1.ry)) / 2;
+    const alpha = Math.max(0, 1 - dist / GRID_FADE_DIST) * 0.5;
+    if (alpha < 0.01) continue;
+
+    ctx.strokeStyle = `rgba(60, 80, 140, ${alpha})`;
+    ctx.beginPath();
+    ctx.moveTo(p0.sx, p0.sy);
+    ctx.lineTo(p1.sx, p1.sy);
+    ctx.stroke();
+  }
+}
+
+function drawShip(ctx, sx, sy) {
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.rotate(-Math.PI / 2); // nose points up
 
   ctx.beginPath();
-  ctx.moveTo(SHIP_SIZE, 0);                          // nose
-  ctx.lineTo(-SHIP_SIZE * 0.7, -SHIP_SIZE * 0.6);   // top-left
-  ctx.lineTo(-SHIP_SIZE * 0.4, 0);                   // indent
-  ctx.lineTo(-SHIP_SIZE * 0.7, SHIP_SIZE * 0.6);    // bottom-left
+  ctx.moveTo(SHIP_SIZE, 0);
+  ctx.lineTo(-SHIP_SIZE * 0.7, -SHIP_SIZE * 0.6);
+  ctx.lineTo(-SHIP_SIZE * 0.4, 0);
+  ctx.lineTo(-SHIP_SIZE * 0.7, SHIP_SIZE * 0.6);
   ctx.closePath();
 
   ctx.fillStyle = '#4fc3f7';
@@ -52,37 +148,15 @@ export function render(ctx, canvas, ship, input) {
   ctx.strokeStyle = '#81d4fa';
   ctx.lineWidth = 2;
   ctx.stroke();
-
   ctx.restore();
 }
 
-function drawGrid(ctx, w, h, camX, camY) {
-  ctx.strokeStyle = GRID_COLOR;
-  ctx.lineWidth = 1;
-
-  const startX = -(camX % GRID_SPACING);
-  const startY = -(camY % GRID_SPACING);
-
-  ctx.beginPath();
-  for (let x = startX; x < w; x += GRID_SPACING) {
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, h);
-  }
-  for (let y = startY; y < h; y += GRID_SPACING) {
-    ctx.moveTo(0, y);
-    ctx.lineTo(w, y);
-  }
-  ctx.stroke();
-}
-
-function drawThrusters(ctx, w, h, ship, input) {
+function drawThrusters(ctx, sx, sy, input) {
   ctx.save();
-  ctx.translate(w / 2, h / 2);
-  ctx.rotate(ship.angle);
+  ctx.translate(sx, sy);
+  ctx.rotate(-Math.PI / 2);
 
-  // Left thruster position (top-left of ship, negative Y in ship-local)
   drawThrusterFlame(ctx, -SHIP_SIZE * 0.5, -SHIP_SIZE * 0.5, input.rightX, -input.rightY);
-  // Right thruster position (bottom-left of ship, positive Y in ship-local)
   drawThrusterFlame(ctx, -SHIP_SIZE * 0.5, SHIP_SIZE * 0.5, input.leftX, -input.leftY);
 
   ctx.restore();
@@ -92,11 +166,8 @@ function drawThrusterFlame(ctx, tx, ty, stickX, stickY) {
   const magnitude = Math.sqrt(stickX * stickX + stickY * stickY);
   if (magnitude < 0.05) return;
 
-  // Map stick to ship-local: ship +X = forward = stickY, ship +Y = right = stickX
   const thrustLocalX = stickY / magnitude;
   const thrustLocalY = stickX / magnitude;
-
-  // Flame points opposite to thrust direction (exhaust)
   const flameX = -thrustLocalX;
   const flameY = -thrustLocalY;
   const length = SHIP_SIZE * 0.8 * magnitude;
@@ -113,6 +184,5 @@ function drawThrusterFlame(ctx, tx, ty, stickX, stickY) {
   ctx.beginPath();
   ctx.ellipse(flameX * length * 0.5, flameY * length * 0.5, length * 0.5, length * 0.25, Math.atan2(flameY, flameX), 0, Math.PI * 2);
   ctx.fill();
-
   ctx.restore();
 }
