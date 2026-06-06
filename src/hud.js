@@ -51,26 +51,51 @@ function drawBar(ctx, x, y, fraction, color, label) {
 function drawPlayerIndicators(ctx, w, h, otherPlayers, camera) {
   if (!otherPlayers || otherPlayers.length === 0) return;
 
-  const cx = w / 2;
-  const cy = h / 2;
-  const edgeMargin = 30;
+  const edgeMargin = 20;
+  const shipSX = camera.screenX;
+  const shipSY = camera.screenY;
+  const CAM_HEIGHT = 600;
 
   otherPlayers.forEach(player => {
-    // Position relative to camera center
-    const dx = player.x - (camera.x + cx);
-    const dy = player.y - (camera.y + cy);
+    const dx = player.x - camera.x;
+    const dy = player.y - camera.y;
+    const cos = Math.cos(camera.angle);
+    const sin = Math.sin(camera.angle);
+    const rx = -(dx * sin - dy * cos);
+    const ry = dx * cos + dy * sin;
 
-    // Skip if on-screen
-    if (Math.abs(dx) < cx && Math.abs(dy) < cy) return;
+    // Project with perspective
+    const depth = CAM_HEIGHT + ry * 0.5;
+    let psx, psy;
+    if (depth > 10) {
+      const scale = CAM_HEIGHT / depth;
+      psx = shipSX + rx * scale;
+      psy = shipSY - ry * scale;
+    } else {
+      // Behind camera — push far in opposite direction
+      psx = shipSX - rx * 10;
+      psy = shipSY + ry * 10;
+    }
 
-    // Angle to player
-    const angle = Math.atan2(dy, dx);
+    // If on-screen, don't draw indicator
+    if (psx >= edgeMargin && psx <= w - edgeMargin && psy >= edgeMargin && psy <= h - edgeMargin) return;
 
-    // Clamp to edge of screen
-    const edgeX = Math.max(edgeMargin, Math.min(w - edgeMargin, cx + Math.cos(angle) * (cx - edgeMargin)));
-    const edgeY = Math.max(edgeMargin, Math.min(h - edgeMargin, cy + Math.sin(angle) * (cy - edgeMargin)));
+    // Clamp to screen rectangle
+    const dirX = psx - shipSX;
+    const dirY = psy - shipSY;
 
-    // Draw indicator triangle
+    // Find intersection with screen edges from ship position
+    let t = Infinity;
+    if (dirX > 0) t = Math.min(t, (w - edgeMargin - shipSX) / dirX);
+    if (dirX < 0) t = Math.min(t, (edgeMargin - shipSX) / dirX);
+    if (dirY > 0) t = Math.min(t, (h - edgeMargin - shipSY) / dirY);
+    if (dirY < 0) t = Math.min(t, (edgeMargin - shipSY) / dirY);
+    if (!isFinite(t)) return;
+
+    const edgeX = shipSX + dirX * t;
+    const edgeY = shipSY + dirY * t;
+    const angle = Math.atan2(dirY, dirX);
+
     ctx.save();
     ctx.translate(edgeX, edgeY);
     ctx.rotate(angle);
@@ -79,7 +104,7 @@ function drawPlayerIndicators(ctx, w, h, otherPlayers, camera) {
     ctx.lineTo(-4, -5);
     ctx.lineTo(-4, 5);
     ctx.closePath();
-    ctx.fillStyle = player.color || '#ff5722';
+    ctx.fillStyle = `hsl(${player.hue ?? 0}, 100%, 50%)`;
     ctx.fill();
     ctx.restore();
   });

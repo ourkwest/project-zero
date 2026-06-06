@@ -1,6 +1,5 @@
 // Gamepad input module
-// Reads two joysticks (4 axes) and 3 buttons from the first connected gamepad.
-// Returns a neutral input object when no gamepad is connected.
+// Supports selecting a specific gamepad by index.
 
 const DEADZONE = 0.15;
 
@@ -11,13 +10,29 @@ const NEUTRAL = Object.freeze({
   connected: false,
 });
 
+let selectedIndex = 0;
+
+export function setGamepadIndex(index) { selectedIndex = index; }
+export function getGamepadIndex() { return selectedIndex; }
+
+export function getConnectedGamepads() {
+  const gps = navigator.getGamepads();
+  const result = [];
+  for (let i = 0; i < gps.length; i++) {
+    if (gps[i] && gps[i].axes.length >= 4 && gps[i].buttons.length >= 3) {
+      result.push({ index: i, id: gps[i].id });
+    }
+  }
+  return result;
+}
+
 function applyDeadzone(value) {
   return Math.abs(value) < DEADZONE ? 0 : value;
 }
 
 export function pollGamepad() {
   const gamepads = navigator.getGamepads();
-  const gp = gamepads[0] || gamepads[1] || gamepads[2] || gamepads[3];
+  const gp = gamepads[selectedIndex];
 
   if (!gp) return NEUTRAL;
 

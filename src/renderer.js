@@ -44,7 +44,7 @@ function project(rx, ry, cam) {
   return { sx, sy, scale };
 }
 
-export function render(ctx, canvas, ship, input) {
+export function render(ctx, canvas, ship, input, remotePlayers, localHue) {
   const w = canvas.width;
   const h = canvas.height;
   const cam = getCamera(ship, w, h);
@@ -58,11 +58,18 @@ export function render(ctx, canvas, ship, input) {
   // Draw grid with perspective
   drawGrid(ctx, w, h, ship, cam);
 
+  // Draw remote ships
+  if (remotePlayers) {
+    for (const rp of remotePlayers) {
+      drawRemoteShip(ctx, rp, ship, cam);
+    }
+  }
+
   // Draw thrusters (screen space, ship faces up)
   drawThrusters(ctx, cam.screenX, cam.screenY, input);
 
   // Draw ship (fixed screen position, facing up)
-  drawShip(ctx, cam.screenX, cam.screenY);
+  drawShip(ctx, cam.screenX, cam.screenY, localHue);
 }
 
 function worldToShipRelative(wx, wy, ship) {
@@ -131,7 +138,7 @@ function drawWorldLine(ctx, x1, y1, x2, y2, ship, cam) {
   }
 }
 
-function drawShip(ctx, sx, sy) {
+function drawShip(ctx, sx, sy, hue) {
   ctx.save();
   ctx.translate(sx, sy);
   ctx.rotate(-Math.PI / 2); // nose points up
@@ -143,10 +150,40 @@ function drawShip(ctx, sx, sy) {
   ctx.lineTo(-SHIP_SIZE * 0.7, SHIP_SIZE * 0.6);
   ctx.closePath();
 
-  ctx.fillStyle = '#4fc3f7';
-  ctx.fill();
-  ctx.strokeStyle = '#81d4fa';
+  ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+  ctx.strokeStyle = `hsl(${hue}, 80%, 70%)`;
   ctx.lineWidth = 2;
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawRemoteShip(ctx, remote, localShip, cam) {
+  const { rx, ry } = worldToShipRelative(remote.x, remote.y, localShip);
+  const p = project(rx, ry, cam);
+  if (!p) return;
+
+  const size = SHIP_SIZE * p.scale;
+  // Remote ship's angle in screen space: subtract local ship's angle
+  // (since the world is viewed rotated so local ship faces up)
+  const screenAngle = remote.angle - localShip.angle;
+
+  ctx.save();
+  ctx.translate(p.sx, p.sy);
+  ctx.rotate((remote.angle - localShip.angle) - Math.PI / 2);
+
+  ctx.beginPath();
+  ctx.moveTo(size, 0);
+  ctx.lineTo(-size * 0.7, -size * 0.6);
+  ctx.lineTo(-size * 0.4, 0);
+  ctx.lineTo(-size * 0.7, size * 0.6);
+  ctx.closePath();
+
+  const hue = remote.hue ?? 0;
+  ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+  ctx.strokeStyle = `hsl(${hue}, 80%, 70%)`;
+  ctx.lineWidth = 2 * p.scale;
+  ctx.fill();
   ctx.stroke();
   ctx.restore();
 }

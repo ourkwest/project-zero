@@ -6,12 +6,38 @@
   <title>Project Zero</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a1a; font-family: system-ui, sans-serif; color: #e0e0e0; }
     canvas { display: block; width: 100%; height: 100%; }
+    #ui { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+    .screen { max-width: 400px; width: 90%; display: flex; flex-direction: column; gap: 16px; padding: 32px; }
+    .splash { align-items: center; text-align: center; }
+    .title { font-size: 2.5rem; letter-spacing: 0.2em; color: #4fc3f7; text-shadow: 0 0 20px rgba(79,195,247,0.4); }
+    .subtitle { color: #666; font-size: 1rem; margin-bottom: 16px; }
+    .menu { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+    h2 { color: #4fc3f7; font-size: 1.4rem; }
+    label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: #999; }
+    input[type="text"] { background: #1a1a2e; border: 1px solid #333; border-radius: 4px; padding: 10px; color: #e0e0e0; font-size: 1rem; }
+    input[type="range"] { width: 100%; accent-color: #4fc3f7; }
+    .color-preview { display: inline-block; width: 24px; height: 24px; border-radius: 50%; margin-top: 4px; }
+    select { background: #1a1a2e; border: 1px solid #333; border-radius: 4px; padding: 8px; color: #e0e0e0; font-size: 0.9rem; }
+    .session-id-input { display: flex; gap: 8px; }
+    .session-id-input select { flex: 1; }
+    button { background: #4fc3f7; color: #0a0a1a; border: none; border-radius: 4px; padding: 12px 20px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
+    button:disabled { opacity: 0.3; cursor: not-allowed; }
+    button:hover:not(:disabled) { opacity: 0.85; }
+    button.secondary { background: transparent; border: 1px solid #444; color: #999; }
+    .gamepad-status { font-size: 0.85rem; color: #f44; }
+    .gamepad-status.connected { color: #4c4; }
+    .session-code { background: #1a1a2e; padding: 16px; border-radius: 8px; text-align: center; font-size: 1.3rem; font-weight: bold; color: #4fc3f7; letter-spacing: 0.05em; }
+    .players ul { list-style: none; padding: 0; }
+    .players li { padding: 6px 0; display: flex; align-items: center; gap: 8px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+    .waiting { color: #666; font-style: italic; text-align: center; }
   </style>
 </head>
 <body>
-  <canvas id="game"></canvas>
+  <div id="ui"></div>
+  <canvas id="game" style="display:none"></canvas>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
