@@ -7,6 +7,7 @@ import { createNavigation } from './navigation.js';
 import { createRemotePlayers } from './remote-players.js';
 import { createCombatState, cycleWeapon, tryFire, updateCombat, receiveProjectiles, updateRemoteProjectilePositions, receiveHits, getLocalProjectilePositions, getAllProjectiles } from './combat.js';
 import { updateEffects, getParticles, getFlashes } from './effects.js';
+import { WEAPONS, acquireTarget } from './weapons.js';
 
 const canvas = document.getElementById('game');
 const uiContainer = document.getElementById('ui');
@@ -70,8 +71,10 @@ function loop(now) {
 
   // Firing: button0
   const remotes = remotePlayers.getAll();
+  const currentWeapon = WEAPONS[combat.weapon];
+  const lockedTarget = currentWeapon?.homingTurnRate ? acquireTarget(ship, remotes) : null;
   if (input.button0Pressed) {
-    const fired = tryFire(combat, ship);
+    const fired = tryFire(combat, ship, lockedTarget);
     if (fired && network) {
       network.broadcast({ type: 'projectiles', projectiles: fired });
     }
@@ -99,7 +102,7 @@ function loop(now) {
   }
 
   const allProjectiles = getAllProjectiles(combat);
-  render(ctx, canvas, ship, input, remotes, localHue, allProjectiles, getParticles(), getFlashes());
+  render(ctx, canvas, ship, input, remotes, localHue, allProjectiles, getParticles(), getFlashes(), lockedTarget);
 
   const cam = getCamera(ship, canvas.width, canvas.height);
   drawHUD(ctx, canvas.width, canvas.height, { health: combat.health, energy: combat.energy, weapon: combat.weapon }, remotes, cam);

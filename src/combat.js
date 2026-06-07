@@ -3,7 +3,7 @@
 // The shooter is authoritative over all projectile positions and streams them.
 // Other clients lerp to the streamed positions and run collision against local ship.
 
-import { WEAPONS, createProjectile, updateProjectile } from './weapons.js';
+import { WEAPONS, createProjectile, updateProjectile, acquireTarget } from './weapons.js';
 import { spawnExplosion } from './effects.js';
 
 const ENERGY_REGEN_RATE = 0.12; // per second
@@ -27,7 +27,7 @@ export function cycleWeapon(combat, direction) {
   combat.weapon = (combat.weapon + direction + WEAPONS.length) % WEAPONS.length;
 }
 
-export function tryFire(combat, ship) {
+export function tryFire(combat, ship, lockedTarget) {
   const weapon = WEAPONS[combat.weapon];
   if (weapon.isRepair) return null;
   if (combat.cooldown > 0) return null;
@@ -38,7 +38,7 @@ export function tryFire(combat, ship) {
 
   const projectiles = [];
   for (let i = 0; i < weapon.count; i++) {
-    const p = createProjectile(ship, weapon, i);
+    const p = createProjectile(ship, weapon, i, lockedTarget);
     combat.projectiles.push(p);
     projectiles.push(p);
   }

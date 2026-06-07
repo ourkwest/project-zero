@@ -44,7 +44,7 @@ function project(rx, ry, cam) {
   return { sx, sy, scale };
 }
 
-export function render(ctx, canvas, ship, input, remotePlayers, localHue, projectiles, particles, flashes) {
+export function render(ctx, canvas, ship, input, remotePlayers, localHue, projectiles, particles, flashes, lockedTarget) {
   const w = canvas.width;
   const h = canvas.height;
   const cam = getCamera(ship, w, h);
@@ -84,6 +84,11 @@ export function render(ctx, canvas, ship, input, remotePlayers, localHue, projec
     for (const rp of remotePlayers) {
       drawRemoteShip(ctx, rp, ship, cam);
     }
+  }
+
+  // Draw lock-on indicator
+  if (lockedTarget != null && remotePlayers && remotePlayers[lockedTarget]) {
+    drawLockIndicator(ctx, remotePlayers[lockedTarget], ship, cam);
   }
 
   // Draw thrusters (screen space, ship faces up)
@@ -272,6 +277,21 @@ function drawFlash(ctx, f, localShip, cam) {
   ctx.beginPath();
   ctx.arc(proj.sx, proj.sy, radius, 0, Math.PI * 2);
   ctx.fill();
+}
+
+function drawLockIndicator(ctx, target, localShip, cam) {
+  const { rx, ry } = worldToShipRelative(target.x, target.y, localShip);
+  const p = project(rx, ry, cam);
+  if (!p) return;
+
+  const size = 22 * p.scale;
+  ctx.save();
+  ctx.translate(p.sx, p.sy);
+  ctx.rotate(Math.PI / 4);
+  ctx.strokeStyle = 'rgba(255, 60, 60, 0.9)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-size, -size, size * 2, size * 2);
+  ctx.restore();
 }
 
 function drawThrusters(ctx, sx, sy, input) {
