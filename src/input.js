@@ -1,14 +1,16 @@
 // Gamepad input module
 // Supports selecting a specific gamepad by index.
 // Provides both raw state and edge-detected presses.
+// Mapping: R1(5)=fire, ×(0)=prev weapon, ○(1)=next weapon
 
 const DEADZONE = 0.15;
 
 const NEUTRAL = Object.freeze({
   leftX: 0, leftY: 0,
   rightX: 0, rightY: 0,
-  button0: false, button1: false, button2: false,
-  button0Pressed: false, button1Pressed: false, button2Pressed: false,
+  fire: false, firePressed: false,
+  prevWeapon: false, prevWeaponPressed: false,
+  nextWeapon: false, nextWeaponPressed: false,
   connected: false,
 });
 
@@ -22,7 +24,7 @@ export function getConnectedGamepads() {
   const gps = navigator.getGamepads();
   const result = [];
   for (let i = 0; i < gps.length; i++) {
-    if (gps[i] && gps[i].axes.length >= 4 && gps[i].buttons.length >= 3) {
+    if (gps[i] && gps[i].axes.length >= 4 && gps[i].buttons.length >= 6) {
       result.push({ index: i, id: gps[i].id });
     }
   }
@@ -39,24 +41,24 @@ export function pollGamepad() {
 
   if (!gp) return NEUTRAL;
 
-  const b0 = gp.buttons[0]?.pressed || false;
-  const b1 = gp.buttons[1]?.pressed || false;
-  const b2 = gp.buttons[2]?.pressed || false;
+  const fire = gp.buttons[5]?.pressed || false;   // R1
+  const prev = gp.buttons[0]?.pressed || false;   // ×
+  const next = gp.buttons[1]?.pressed || false;   // ○
 
   const result = {
     leftX: applyDeadzone(gp.axes[2] || 0),
     leftY: applyDeadzone(gp.axes[3] || 0),
     rightX: applyDeadzone(gp.axes[0] || 0),
     rightY: applyDeadzone(gp.axes[1] || 0),
-    button0: b0,
-    button1: b1,
-    button2: b2,
-    button0Pressed: b0 && !prevButtons[0],
-    button1Pressed: b1 && !prevButtons[1],
-    button2Pressed: b2 && !prevButtons[2],
+    fire,
+    firePressed: fire && !prevButtons[0],
+    prevWeapon: prev,
+    prevWeaponPressed: prev && !prevButtons[1],
+    nextWeapon: next,
+    nextWeaponPressed: next && !prevButtons[2],
     connected: true,
   };
 
-  prevButtons = [b0, b1, b2];
+  prevButtons = [fire, prev, next];
   return result;
 }

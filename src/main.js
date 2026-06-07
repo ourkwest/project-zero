@@ -65,15 +65,15 @@ function loop(now) {
   updateShip(ship, input, dt);
   remotePlayers.tick(dt);
 
-  // Weapon cycling: button1 = prev, button2 = next
-  if (input.button1Pressed) cycleWeapon(combat, -1);
-  if (input.button2Pressed) cycleWeapon(combat, 1);
+  // Weapon cycling: × = prev, ○ = next
+  if (input.prevWeaponPressed) cycleWeapon(combat, -1);
+  if (input.nextWeaponPressed) cycleWeapon(combat, 1);
 
-  // Firing: button0
+  // Firing: R1
   const remotes = remotePlayers.getAll();
   const currentWeapon = WEAPONS[combat.weapon];
-  const lockedTarget = currentWeapon?.homingTurnRate ? acquireTarget(ship, remotes) : null;
-  if (input.button0Pressed) {
+  const lockedTarget = currentWeapon?.homingAccel ? acquireTarget(ship, remotes) : null;
+  if (input.firePressed) {
     const fired = tryFire(combat, ship, lockedTarget);
     if (fired && network) {
       network.broadcast({ type: 'projectiles', projectiles: fired });
@@ -81,7 +81,7 @@ function loop(now) {
   }
 
   // Update combat (energy regen, repair, projectile movement, collision)
-  const hits = updateCombat(combat, ship, dt, remotes, input.button0);
+  const hits = updateCombat(combat, ship, dt, remotes, input.fire);
   if (hits.length > 0 && network) {
     network.broadcast({ type: 'hits', hits });
   }

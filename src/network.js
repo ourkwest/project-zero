@@ -57,7 +57,13 @@ export function createHost(sessionKey, callbacks, hostInfo) {
         conn.send(msg);
       }
     },
-    // Send player list to all peers
+    // Broadcast an explicit player list (e.g. after hue spreading)
+    broadcastPlayers(players) {
+      const msg = { type: 'players', players };
+      for (const { conn } of connections.values()) {
+        conn.send(msg);
+      }
+    },
     startGame() {
       const msg = { type: 'start' };
       for (const { conn } of connections.values()) {

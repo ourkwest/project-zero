@@ -85,6 +85,27 @@ export function createNavigation(uiContainer, canvas, onGameStart) {
     else if (action === 'play') startPlay();
   }
 
+  function spreadHue(players) {
+    // Minimum separation: 360 / max_players = 30°
+    const MIN_SEP = 30;
+    // First player keeps their exact hue. Subsequent players get nudged if too close.
+    for (let i = 1; i < players.length; i++) {
+      let hue = players[i].hue;
+      // Check against all previously assigned hues
+      for (let attempt = 0; attempt < 360; attempt++) {
+        let tooClose = false;
+        for (let j = 0; j < i; j++) {
+          const diff = Math.abs(((hue - players[j].hue + 180) % 360 + 360) % 360 - 180);
+          if (diff < MIN_SEP) { tooClose = true; break; }
+        }
+        if (!tooClose) break;
+        // Nudge clockwise
+        hue = (hue + 1) % 360;
+      }
+      players[i].hue = hue;
+    }
+  }
+
   function startHost() {
     const id = { adj1: 'Big', adj2: 'Angry', animal: 'Shark' };
     const key = sessionIdToKey(id);
@@ -97,10 +118,16 @@ export function createNavigation(uiContainer, canvas, onGameStart) {
       onReady: () => show('session'),
       onPlayerJoin: (peerId, info) => {
         sessionState.players.push({ peerId, ...info });
+        spreadHue(sessionState.players);
+        state.hue = sessionState.players[0].hue;
+        network.broadcastPlayers(sessionState.players);
         renderScreen();
       },
       onPlayerLeave: (peerId) => {
         sessionState.players = sessionState.players.filter(p => p.peerId !== peerId);
+        spreadHue(sessionState.players);
+        state.hue = sessionState.players[0].hue;
+        network.broadcastPlayers(sessionState.players);
         renderScreen();
       },
       onPlayerList: () => {},
@@ -116,7 +143,13 @@ export function createNavigation(uiContainer, canvas, onGameStart) {
 
     network = joinSession(key, playerInfo, {
       onReady: () => show('session'),
-      onPlayerList: (players) => { sessionState.players = players; renderScreen(); },
+      onPlayerList: (players) => {
+        sessionState.players = players;
+        // Pick our assigned hue from the host's player list
+        const me = players.find(p => p.name === state.name && p.peerId !== 'host');
+        if (me) state.hue = me.hue;
+        renderScreen();
+      },
       onGameData: (peerId, payload) => onGameStart?.onGameData?.(peerId, payload),
       onGameStart: () => { show('game'); sessionState.localHue = state.hue; onGameStart?.start?.(network, sessionState); },
       onDisconnect: () => { destroyNetwork(); show('splash'); },
@@ -141,10 +174,8 @@ export function createNavigation(uiContainer, canvas, onGameStart) {
       state.gamepadConnected = connected;
 
       if (connected && state.gamepadIndex === 0 && isJoin && gps.length > 1) {
-        // Default guest to last gamepad
         state.gamepadIndex = gps[gps.length - 1].index;
       } else if (connected && !isJoin) {
-        // Default host to first gamepad
         state.gamepadIndex = gps[0].index;
       }
 
