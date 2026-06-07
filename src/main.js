@@ -71,7 +71,7 @@ function loop(now) {
   // Firing: button0
   const remotes = remotePlayers.getAll();
   if (input.button0Pressed) {
-    const fired = tryFire(combat, ship, remotes);
+    const fired = tryFire(combat, ship);
     if (fired && network) {
       network.broadcast({ type: 'projectiles', projectiles: fired });
     }

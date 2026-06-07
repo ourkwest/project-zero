@@ -65,7 +65,6 @@ export function createHost(sessionKey, callbacks, hostInfo) {
       }
     },
     getPlayerCount() { return connections.size + 1; },
-    getPeerId() { return peer.id; },
     destroy() { peer.destroy(); },
   };
 }
@@ -105,7 +104,6 @@ export function joinSession(sessionKey, playerInfo, callbacks) {
     broadcast(payload) {
       if (conn) conn.send({ type: 'game', peerId: peer.id, payload });
     },
-    getPeerId() { return peer.id; },
     destroy() { peer.destroy(); },
   };
 }
