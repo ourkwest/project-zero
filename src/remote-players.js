@@ -46,8 +46,8 @@ export function createRemotePlayers() {
 
     getAll() {
       const result = [];
-      for (const p of players.values()) {
-        result.push({ ...p.rendered, hue: p.info?.hue ?? 0, name: p.info?.name ?? '' });
+      for (const [id, p] of players) {
+        result.push({ peerId: id, ...p.rendered, hue: p.info?.hue ?? 0, name: p.info?.name ?? '' });
       }
       return result;
     },

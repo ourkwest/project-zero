@@ -44,7 +44,7 @@ function project(rx, ry, cam) {
   return { sx, sy, scale };
 }
 
-export function render(ctx, canvas, ship, input, remotePlayers, localHue) {
+export function render(ctx, canvas, ship, input, remotePlayers, localHue, projectiles, particles, flashes) {
   const w = canvas.width;
   const h = canvas.height;
   const cam = getCamera(ship, w, h);
@@ -57,6 +57,27 @@ export function render(ctx, canvas, ship, input, remotePlayers, localHue) {
 
   // Draw grid with perspective
   drawGrid(ctx, w, h, ship, cam);
+
+  // Draw projectiles
+  if (projectiles) {
+    for (const p of projectiles) {
+      drawProjectile(ctx, p, ship, cam, remotePlayers);
+    }
+  }
+
+  // Draw particles (explosions)
+  if (particles) {
+    for (const p of particles) {
+      drawParticle(ctx, p, ship, cam);
+    }
+  }
+
+  // Draw impact flashes
+  if (flashes) {
+    for (const f of flashes) {
+      drawFlash(ctx, f, ship, cam);
+    }
+  }
 
   // Draw remote ships
   if (remotePlayers) {
@@ -186,6 +207,71 @@ function drawRemoteShip(ctx, remote, localShip, cam) {
   ctx.fill();
   ctx.stroke();
   ctx.restore();
+}
+
+function drawProjectile(ctx, p, localShip, cam, remotePlayers) {
+  const { rx, ry } = worldToShipRelative(p.x, p.y, localShip);
+  const proj = project(rx, ry, cam);
+  if (!proj) return;
+
+  // Fade opacity when close to any remote ship
+  let proximityFade = 1;
+  if (remotePlayers) {
+    for (const r of remotePlayers) {
+      const dx = p.x - r.x;
+      const dy = p.y - r.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const fadeStart = 100;
+      if (dist < fadeStart) {
+        proximityFade = Math.min(proximityFade, (dist / fadeStart) ** 2);
+      }
+    }
+  }
+
+  const size = Math.max(1.5, p.size * proj.scale);
+  ctx.beginPath();
+  ctx.arc(proj.sx, proj.sy, size, 0, Math.PI * 2);
+  const alpha = Math.min(1, p.life) * proximityFade;
+  ctx.fillStyle = p.homing
+    ? `rgba(255, 80, 80, ${alpha})`
+    : `rgba(255, 255, 100, ${alpha})`;
+  ctx.fill();
+}
+
+function drawParticle(ctx, p, localShip, cam) {
+  const { rx, ry } = worldToShipRelative(p.x, p.y, localShip);
+  const proj = project(rx, ry, cam);
+  if (!proj) return;
+
+  const t = p.life / p.maxLife;
+  const size = p.size * proj.scale * t;
+  if (size < 0.5) return;
+
+  ctx.beginPath();
+  ctx.arc(proj.sx, proj.sy, size, 0, Math.PI * 2);
+  // Orange-yellow fading to red
+  const r = 255;
+  const g = Math.floor(200 * t);
+  const b = Math.floor(50 * t);
+  ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${t * 0.9})`;
+  ctx.fill();
+}
+
+function drawFlash(ctx, f, localShip, cam) {
+  const { rx, ry } = worldToShipRelative(f.x, f.y, localShip);
+  const proj = project(rx, ry, cam);
+  if (!proj) return;
+
+  const t = f.life / f.maxLife;
+  const radius = f.radius * proj.scale * (1 + (1 - t) * 0.5);
+  const grad = ctx.createRadialGradient(proj.sx, proj.sy, 0, proj.sx, proj.sy, radius);
+  grad.addColorStop(0, `rgba(255, 255, 255, ${t * 0.9})`);
+  grad.addColorStop(0.4, `rgba(255, 240, 180, ${t * 0.6})`);
+  grad.addColorStop(1, `rgba(255, 200, 80, 0)`);
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(proj.sx, proj.sy, radius, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawThrusters(ctx, sx, sy, input) {
