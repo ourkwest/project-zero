@@ -3,6 +3,7 @@
 // The active screen is rendered into a #ui container.
 
 import { ADJ1, ADJ2, ANIMALS } from './session-id.js';
+import QRCode from 'qrcode';
 
 export function splashScreen() {
   return `
@@ -71,6 +72,7 @@ export function sessionScreen({ sessionId, sessionKey, players = [], isHost = fa
       <h2>Session</h2>
       <div class="session-code">${escHtml(sessionId)}</div>
       <a href="${link}" target="_blank" style="color:#4fc3f7;text-align:center;font-size:0.85rem;word-break:break-all">${link}</a>
+      <canvas id="qr-code" style="align-self:center;margin:0.5rem 0"></canvas>
       <div class="players">
         <h3>Players (${players.length})</h3>
         <ul>${players.map(p => `<li><span class="dot" style="background:hsl(${p.hue},100%,50%)"></span>${escHtml(p.name)}</li>`).join('')}</ul>
@@ -88,4 +90,11 @@ function options(list, selected) {
 
 function escHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+
+export function renderSessionQR(container, sessionKey) {
+  const canvas = container.querySelector('#qr-code');
+  if (!canvas) return;
+  const link = `${window.location.origin}${window.location.pathname}?session=${sessionKey}`;
+  QRCode.toCanvas(canvas, link, { width: 160, margin: 1, color: { dark: '#ffffff', light: '#00000000' } });
 }

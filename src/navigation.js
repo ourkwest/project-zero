@@ -1,7 +1,7 @@
 // Screen navigation / state machine
 // Manages transitions between UI screens and the game canvas.
 
-import { splashScreen, hostScreen, joinScreen, sessionScreen } from './screens.js';
+import { splashScreen, hostScreen, joinScreen, sessionScreen, renderSessionQR } from './screens.js';
 import { generateSessionId, sessionIdToString, sessionIdToKey } from './session-id.js';
 import { createHost, joinSession } from './network.js';
 import { getConnectedGamepads, setGamepadIndex } from './input.js';
@@ -33,6 +33,7 @@ export function createNavigation(uiContainer, canvas, onGameStart) {
     else if (currentScreen === 'session') html = sessionScreen(sessionState);
     uiContainer.innerHTML = html;
     bindEvents();
+    if (currentScreen === 'session') renderSessionQR(uiContainer, sessionState.sessionKey);
   }
 
   function updateButtons() {
