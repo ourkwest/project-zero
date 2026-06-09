@@ -11,6 +11,7 @@ const REPAIR_RATE = 0.15; // health per second while channeling
 const REPAIR_ENERGY_COST = 0.2; // energy per second while repairing
 const SHIP_RADIUS = 18;
 const LERP_RATE = 15;
+const RESPAWN_TIME = 3; // seconds
 
 export function createCombatState() {
   return {
@@ -20,6 +21,8 @@ export function createCombatState() {
     cooldown: 0,
     projectiles: [], // local projectiles (we are authoritative)
     remoteProjectiles: [], // from other players (streamed)
+    dead: false,
+    respawnTimer: 0,
   };
 }
 
@@ -46,6 +49,17 @@ export function tryFire(combat, ship, lockedTarget) {
 }
 
 export function updateCombat(combat, ship, dt, remotes, isFireHeld) {
+  // Handle respawn timer
+  if (combat.dead) {
+    combat.respawnTimer -= dt;
+    if (combat.respawnTimer <= 0) {
+      combat.dead = false;
+      combat.health = 1;
+      combat.energy = 1;
+    }
+    return { hits: [], died: false };
+  }
+
   combat.cooldown = Math.max(0, combat.cooldown - dt);
   combat.energy = Math.min(1, combat.energy + ENERGY_REGEN_RATE * dt);
 
@@ -88,7 +102,17 @@ export function updateCombat(combat, ship, dt, remotes, isFireHeld) {
       combat.remoteProjectiles.splice(i, 1);
     }
   }
-  return hits;
+
+  // Check for death
+  let died = false;
+  if (combat.health <= 0) {
+    combat.dead = true;
+    combat.respawnTimer = RESPAWN_TIME;
+    spawnExplosion(ship.x, ship.y, 1); // big death explosion
+    died = true;
+  }
+
+  return { hits, died };
 }
 
 // Initial projectile spawn from remote player

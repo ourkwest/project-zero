@@ -64,11 +64,13 @@ export function joinScreen({ name = '', hue = 180, gamepadConnected = false, adj
   `;
 }
 
-export function sessionScreen({ sessionId, players = [], isHost = false }) {
+export function sessionScreen({ sessionId, sessionKey, players = [], isHost = false }) {
+  const link = `${window.location.origin}${window.location.pathname}?session=${sessionKey}`;
   return `
     <div class="screen session">
       <h2>Session</h2>
       <div class="session-code">${escHtml(sessionId)}</div>
+      <a href="${link}" target="_blank" style="color:#4fc3f7;text-align:center;font-size:0.85rem;word-break:break-all">${link}</a>
       <div class="players">
         <h3>Players (${players.length})</h3>
         <ul>${players.map(p => `<li><span class="dot" style="background:hsl(${p.hue},100%,50%)"></span>${escHtml(p.name)}</li>`).join('')}</ul>

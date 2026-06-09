@@ -10,7 +10,7 @@ const GAMEPAD_POLL_INTERVAL = 500;
 
 export function createNavigation(uiContainer, canvas, onGameStart) {
   let currentScreen = 'splash';
-  let state = { name: 'Player 1', hue: Math.floor(Math.random() * 360), gamepadConnected: false, gamepadIndex: 0, gamepads: [], adj1: 'Big', adj2: 'Angry', animal: 'Shark' };
+  let state = { name: 'Player 1', hue: Math.floor(Math.random() * 360), gamepadConnected: false, gamepadIndex: 0, gamepads: [], adj1: '', adj2: '', animal: '' };
   let sessionState = { sessionId: null, players: [], isHost: false };
   let network = null;
   let gamepadTimer = null;
@@ -107,10 +107,12 @@ export function createNavigation(uiContainer, canvas, onGameStart) {
   }
 
   function startHost() {
-    const id = { adj1: 'Big', adj2: 'Angry', animal: 'Shark' };
+    destroyNetwork();
+    const id = generateSessionId();
     const key = sessionIdToKey(id);
     sessionState = {
       sessionId: sessionIdToString(id),
+      sessionKey: key,
       players: [{ name: state.name, hue: state.hue }],
       isHost: true,
     };
@@ -137,9 +139,10 @@ export function createNavigation(uiContainer, canvas, onGameStart) {
   }
 
   function joinGame() {
+    destroyNetwork();
     const key = `${state.adj1}-${state.adj2}-${state.animal}`.toLowerCase();
     const playerInfo = { name: state.name, hue: state.hue };
-    sessionState = { sessionId: `${state.adj1} ${state.adj2} ${state.animal}`, players: [], isHost: false };
+    sessionState = { sessionId: `${state.adj1} ${state.adj2} ${state.animal}`, sessionKey: key, players: [], isHost: false };
 
     network = joinSession(key, playerInfo, {
       onReady: () => show('session'),

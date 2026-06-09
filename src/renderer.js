@@ -44,7 +44,7 @@ function project(rx, ry, cam) {
   return { sx, sy, scale };
 }
 
-export function render(ctx, canvas, ship, input, remotePlayers, localHue, projectiles, particles, flashes, lockedTarget) {
+export function render(ctx, canvas, ship, input, remotePlayers, localHue, projectiles, particles, flashes, lockedTarget, blackHoles, dead) {
   const w = canvas.width;
   const h = canvas.height;
   const cam = getCamera(ship, w, h);
@@ -57,6 +57,13 @@ export function render(ctx, canvas, ship, input, remotePlayers, localHue, projec
 
   // Draw grid with perspective
   drawGrid(ctx, w, h, ship, cam);
+
+  // Draw black holes
+  if (blackHoles) {
+    for (const bh of blackHoles) {
+      drawBlackHole(ctx, bh, ship, cam);
+    }
+  }
 
   // Draw projectiles
   if (projectiles) {
@@ -91,11 +98,24 @@ export function render(ctx, canvas, ship, input, remotePlayers, localHue, projec
     drawLockIndicator(ctx, remotePlayers[lockedTarget], ship, cam);
   }
 
-  // Draw thrusters (screen space, ship faces up)
-  drawThrusters(ctx, cam.screenX, cam.screenY, input);
+  if (!dead) {
+    // Draw thrusters (screen space, ship faces up)
+    drawThrusters(ctx, cam.screenX, cam.screenY, input);
 
-  // Draw ship (fixed screen position, facing up)
-  drawShip(ctx, cam.screenX, cam.screenY, localHue);
+    // Draw ship (fixed screen position, facing up)
+    drawShip(ctx, cam.screenX, cam.screenY, localHue);
+  } else {
+    // Draw respawn overlay
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#f44';
+    ctx.font = 'bold 36px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('DESTROYED', w / 2, h / 2 - 10);
+    ctx.fillStyle = '#aaa';
+    ctx.font = '20px system-ui';
+    ctx.fillText('Respawning...', w / 2, h / 2 + 25);
+  }
 }
 
 function worldToShipRelative(wx, wy, ship) {
@@ -276,6 +296,38 @@ function drawFlash(ctx, f, localShip, cam) {
   ctx.fillStyle = grad;
   ctx.beginPath();
   ctx.arc(proj.sx, proj.sy, radius, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawBlackHole(ctx, bh, localShip, cam) {
+  const { rx, ry } = worldToShipRelative(bh.x, bh.y, localShip);
+  const p = project(rx, ry, cam);
+  if (!p) return;
+
+  const radius = 35 * p.scale;
+  // Outer glow
+  const outer = ctx.createRadialGradient(p.sx, p.sy, radius * 0.5, p.sx, p.sy, radius * 4);
+  outer.addColorStop(0, 'rgba(180, 80, 255, 0.6)');
+  outer.addColorStop(0.4, 'rgba(120, 40, 220, 0.3)');
+  outer.addColorStop(1, 'rgba(80, 0, 160, 0)');
+  ctx.fillStyle = outer;
+  ctx.beginPath();
+  ctx.arc(p.sx, p.sy, radius * 4, 0, Math.PI * 2);
+  ctx.fill();
+  // Bright ring
+  ctx.strokeStyle = 'rgba(200, 120, 255, 0.7)';
+  ctx.lineWidth = 3 * p.scale;
+  ctx.beginPath();
+  ctx.arc(p.sx, p.sy, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  // Dark core
+  const grad = ctx.createRadialGradient(p.sx, p.sy, 0, p.sx, p.sy, radius * 0.8);
+  grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+  grad.addColorStop(0.7, 'rgba(0, 0, 0, 0.9)');
+  grad.addColorStop(1, 'rgba(40, 0, 80, 0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(p.sx, p.sy, radius * 0.8, 0, Math.PI * 2);
   ctx.fill();
 }
 

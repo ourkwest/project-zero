@@ -8,6 +8,7 @@ import { createRemotePlayers } from './remote-players.js';
 import { createCombatState, cycleWeapon, tryFire, updateCombat, receiveProjectiles, updateRemoteProjectilePositions, receiveHits, getLocalProjectilePositions, getAllProjectiles } from './combat.js';
 import { updateEffects, getParticles, getFlashes } from './effects.js';
 import { WEAPONS, acquireTarget } from './weapons.js';
+import { spawnBlackHole, addRemoteBlackHole, applyGravity, getBlackHoles } from './black-holes.js';
 
 const canvas = document.getElementById('game');
 const uiContainer = document.getElementById('ui');
@@ -33,6 +34,8 @@ function onGameData(peerId, payload) {
     updateRemoteProjectilePositions(combat, payload.positions);
   } else if (payload.type === 'hits') {
     receiveHits(combat, payload.hits);
+  } else if (payload.type === 'death') {
+    addRemoteBlackHole(payload.blackHole.id, payload.blackHole.x, payload.blackHole.y);
   }
 }
 
@@ -62,18 +65,18 @@ function loop(now) {
   lastTime = now;
 
   const input = pollGamepad();
-  updateShip(ship, input, dt);
+  if (!combat.dead) updateShip(ship, input, dt);
   remotePlayers.tick(dt);
 
   // Weapon cycling: × = prev, ○ = next
-  if (input.prevWeaponPressed) cycleWeapon(combat, -1);
-  if (input.nextWeaponPressed) cycleWeapon(combat, 1);
+  if (!combat.dead && input.prevWeaponPressed) cycleWeapon(combat, -1);
+  if (!combat.dead && input.nextWeaponPressed) cycleWeapon(combat, 1);
 
   // Firing: R1
   const remotes = remotePlayers.getAll();
   const currentWeapon = WEAPONS[combat.weapon];
-  const lockedTarget = currentWeapon?.homingAccel ? acquireTarget(ship, remotes) : null;
-  if (input.firePressed) {
+  const lockedTarget = (!combat.dead && currentWeapon?.homingAccel) ? acquireTarget(ship, remotes) : null;
+  if (!combat.dead && input.firePressed) {
     const fired = tryFire(combat, ship, lockedTarget);
     if (fired && network) {
       network.broadcast({ type: 'projectiles', projectiles: fired });
@@ -81,28 +84,40 @@ function loop(now) {
   }
 
   // Update combat (energy regen, repair, projectile movement, collision)
-  const hits = updateCombat(combat, ship, dt, remotes, input.fire);
+  const { hits, died } = updateCombat(combat, ship, dt, remotes, input.fire);
   if (hits.length > 0 && network) {
     network.broadcast({ type: 'hits', hits });
   }
+  if (died) {
+    const bh = spawnBlackHole(ship.x, ship.y);
+    if (network) {
+      network.broadcast({ type: 'death', blackHole: bh });
+    }
+  }
+
+  // Apply black hole gravity to all projectiles
+  const allProjectiles = getAllProjectiles(combat);
+  applyGravity(allProjectiles, dt);
+
   updateEffects(dt);
 
   // Broadcast local state periodically
   if (network && now - lastBroadcast > BROADCAST_INTERVAL) {
     lastBroadcast = now;
-    network.broadcast({
-      type: 'ship',
-      state: { x: ship.x, y: ship.y, vx: ship.vx, vy: ship.vy, angle: ship.angle, angularVel: ship.angularVel },
-      info: { hue: localHue },
-    });
+    if (!combat.dead) {
+      network.broadcast({
+        type: 'ship',
+        state: { x: ship.x, y: ship.y, vx: ship.vx, vy: ship.vy, angle: ship.angle, angularVel: ship.angularVel },
+        info: { hue: localHue },
+      });
+    }
     const positions = getLocalProjectilePositions(combat);
     if (positions.length > 0) {
       network.broadcast({ type: 'projectile_update', positions });
     }
   }
 
-  const allProjectiles = getAllProjectiles(combat);
-  render(ctx, canvas, ship, input, remotes, localHue, allProjectiles, getParticles(), getFlashes(), lockedTarget);
+  render(ctx, canvas, ship, input, remotes, localHue, allProjectiles, getParticles(), getFlashes(), lockedTarget, getBlackHoles(), combat.dead);
 
   const cam = getCamera(ship, canvas.width, canvas.height);
   drawHUD(ctx, canvas.width, canvas.height, { health: combat.health, energy: combat.energy, weapon: combat.weapon }, remotes, cam);
