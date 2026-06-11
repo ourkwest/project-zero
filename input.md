@@ -108,3 +108,39 @@ Vite with dev HTTPS (for mobile gamepad support), HMR, and static production bui
 5. Weapons + combat
 6. Death/respawn + black holes
 7. Sound + visual polish
+
+## Feedback
+
+Ask as many questions as you need.
+
+### Control scheme
+
+Both:
+#### Mouse + Keyboard:
+Mouse - captured, used for steering left/right
+Mouse click to fire, scroll wheel to select weapon.
+Arrow keys - used to go forwards, backwards and sideways (strafing)
+
+#### Gamepad:
+Left stick - steering left/right
+Right stick - used to go forwards, backwards and sideways (strafing)
+L1 / R1 to select weapons
+R2 to fire
+
+### Graphical
+
+A big explosion going out that then gets sucked in to nothing when a dead player becomes a black hole.
+Dead players not drawn while waiting to respawn
+Some bug in other player indicators when they are far away maybe?
+
+### Gameplay
+
+Respawn in a new location, not where you died.
+Player ships get bigger (to make them bigger targets) when they kill another player.
+Movement should deplete energy.
+
+### Weapons
+
+Laser weapon, draws a line of decreasing power. Affected by gravity.
+Boost - you can just fly faster
+More ideas for weapons please.
