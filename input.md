@@ -115,11 +115,16 @@ Ask as many questions as you need.
 
 ### Control scheme
 
-Both:
+A new model for controlling the ship will replace the old model. The same physics model (two physics-based thrusters) will be kept though.
+On steering input, the thrusters will fire differentially to cause an increase in angular momentum, as if the user were pushing one stick more forward than the other under the old control scheme.
+Both steering and flying should still work simultaneously though, so steering will create one set of thrusts and moving another, and then the sum of those thrusts will be applied to the thrusters.
+
+Both control schemes will be enabled simultaneously:
+
 #### Mouse + Keyboard:
-Mouse - captured, used for steering left/right
+Mouse used for steering left/right - capture the mouse if it seems sensible, if so, do it on click in the gameplay view and 'esc' should release it.
 Mouse click to fire, scroll wheel to select weapon.
-Arrow keys - used to go forwards, backwards and sideways (strafing)
+Arrow keys - used to go forwards, backwards and sideways (strafing) in the rotational reference frame of the ship - 'up' is always straight forward for the ship.
 
 #### Gamepad:
 Left stick - steering left/right
@@ -132,15 +137,38 @@ R2 to fire
 A big explosion going out that then gets sucked in to nothing when a dead player becomes a black hole.
 Dead players not drawn while waiting to respawn
 Some bug in other player indicators when they are far away maybe?
+A player kill count or death count (whichever is easier, but kill count is preferred if the difference is marginal) should be displayed as a leaderboard in one of the top corners of the screen.
+Move the energy bar just below the player ship.
+Move the weapon display just below the energy bar below the ship.
+Display the health as a green stroked arc centered around the center of the ship that shrinks as damage is taken. 100% health -> full green circle, 50% -> green semi-circle around back half of ship, 1% health -> small green line (very short arc segment) behind ship.
 
 ### Gameplay
 
 Respawn in a new location, not where you died.
 Player ships get bigger (to make them bigger targets) when they kill another player.
-Movement should deplete energy.
+* 20% bigger per death. Their mass should slightly increase too (maybe 5%?) (or fake it by some other means) so that their acceleration is slower.
+* Max player size is 10x starting size.
+* On death, player size/mass resets.
+Movement should deplete energy, almost as fast as it regenerates when flying at full thrust, but scaled with control inputs.
+A "Boost" button (L2? / Shift?) - you can just fly faster when activating it, but energy consumption will be slightly higher than the regeneration rate.
 
 ### Weapons
 
-Laser weapon, draws a line of decreasing power. Affected by gravity.
-Boost - you can just fly faster
+A new Laser weapon added to the cyclable roster of weapons
+* draws a line, with decreasing power/damage/brightness as distance from the ship increases.
+* Exact range/line length can be tweaked but start at ~25x initial ship length (but can be hard coded, doesn't need to be relative to ship length in the code).
+* Path affected by gravity.
+* Continuous beam while holding the fire button.
+
 More ideas for weapons please.
+
+#### Weapon Ideas (brainstormed)
+
+1. **Gravity Bomb** — Fires a slow projectile that, on impact or after a timer, creates a temporary black hole lasting ~5 seconds. Pulls enemy projectiles off course and can trap ships in its pull. High energy cost, long cooldown.
+2. **Shield Pulse** — Briefly projects a circular shield that reflects incoming projectiles back at attackers. Short duration (~0.5s), moderate cooldown. Rewards timing.
+3. **Mine Layer** — Drops stationary proximity mines behind your ship. They detonate when an enemy comes within range. Low damage individually but you can lay a trail. Lasts 15-20 seconds before self-destructing.
+4. **Tether/Grapple** — Fires a beam that latches onto an enemy and tethers you together (slowing them, pulling you toward each other). While tethered, other weapons can still fire. Enemy can break free by boosting.
+5. **EMP Burst** — Short-range radial pulse that drains enemy energy (not health) and briefly disables their steering. Great defensive tool when someone's on your tail.
+6. **Railgun** — Instant hitscan line (no gravity bending), very high damage, very long cooldown (~4s), narrow (no AoE). High-risk high-reward sniper weapon.
+7. **Scatter Rockets** — Fires 3 slow-moving rockets that fan out, then after 1 second all turn toward the nearest enemy. Less accurate than homing missile but harder to evade as a group.
+8. **Plasma Wall** — Fires a short-lived barrier (perpendicular to your heading) that damages enemies who fly through it. Acts as area denial — forces opponents to go around or take damage.

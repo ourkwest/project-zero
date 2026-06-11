@@ -14,14 +14,21 @@ export function createRemotePlayers() {
         existing.target = shipState;
         existing.info = playerInfo;
         existing.lastUpdate = performance.now();
+        existing.dead = false;
       } else {
         players.set(peerId, {
           target: shipState,
           rendered: { ...shipState },
           info: playerInfo,
           lastUpdate: performance.now(),
+          dead: false,
         });
       }
+    },
+
+    markDead(peerId) {
+      const p = players.get(peerId);
+      if (p) p.dead = true;
     },
 
     tick(dt) {
@@ -47,7 +54,7 @@ export function createRemotePlayers() {
     getAll() {
       const result = [];
       for (const [id, p] of players) {
-        result.push({ peerId: id, ...p.rendered, hue: p.info?.hue ?? 0, name: p.info?.name ?? '' });
+        result.push({ peerId: id, ...p.rendered, hue: p.info?.hue ?? 0, name: p.info?.name ?? '', kills: p.info?.kills ?? 0, dead: p.dead });
       }
       return result;
     },

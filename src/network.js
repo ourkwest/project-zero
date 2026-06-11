@@ -50,6 +50,7 @@ export function createHost(sessionKey, callbacks, hostInfo) {
   peer.on('error', err => callbacks.onError?.(err));
 
   return {
+    getLocalId() { return peer.id; },
     // Send game data to all peers
     broadcast(payload) {
       const msg = { type: 'game', peerId: peer.id, payload };
@@ -107,6 +108,7 @@ export function joinSession(sessionKey, playerInfo, callbacks) {
   peer.on('error', err => callbacks.onError?.(err));
 
   return {
+    getLocalId() { return peer.id; },
     broadcast(payload) {
       if (conn) conn.send({ type: 'game', peerId: peer.id, payload });
     },

@@ -33,7 +33,7 @@ export function hostScreen({ name = '', hue = 180, gamepadConnected = false, gam
       <div class="gamepad-status ${gamepadConnected ? 'connected' : ''}">
         Gamepad: ${gamepadConnected ? '✓ Connected' : '✗ Not detected'}
       </div>
-      <button data-action="start-host" ${(!gamepadConnected || !name) ? 'disabled' : ''}>Start Game</button>
+      <button data-action="start-host" ${!name ? 'disabled' : ''}>Start Game</button>
       <button data-action="back" class="secondary">Back</button>
     </div>
   `;
@@ -59,7 +59,7 @@ export function joinScreen({ name = '', hue = 180, gamepadConnected = false, adj
       <div class="gamepad-status ${gamepadConnected ? 'connected' : ''}">
         Gamepad: ${gamepadConnected ? '✓ Connected' : '✗ Not detected'}
       </div>
-      <button data-action="join-session" ${(!gamepadConnected || !name || !adj1 || !adj2 || !animal) ? 'disabled' : ''}>Join</button>
+      <button data-action="join-session" ${(!name || !adj1 || !adj2 || !animal) ? 'disabled' : ''}>Join</button>
       <button data-action="back" class="secondary">Back</button>
     </div>
   `;

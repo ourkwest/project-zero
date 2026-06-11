@@ -6,7 +6,12 @@ import { drawStarfield } from './starfield.js';
 
 const SHIP_SIZE = 20;
 const GRID_SPACING = 200;
-const GRID_FADE_DIST = 1500; // grid fades out beyond this distance
+const GRID_FADE_DIST = 1500;
+const MAX_KILL_SCALE = 10;
+
+function killScale(kills) {
+  return Math.min(MAX_KILL_SCALE, 1 + kills * 0.2);
+}
 
 // Perspective: virtual camera height above the plane.
 // Higher = subtler perspective. Lower = more dramatic.
@@ -44,9 +49,13 @@ function project(rx, ry, cam) {
   return { sx, sy, scale };
 }
 
-export function render(ctx, canvas, ship, input, remotePlayers, localHue, projectiles, particles, flashes, lockedTarget, blackHoles, dead) {
+export function render(ctx, canvas, ship, input, remotePlayers, localHue, projectiles, particles, flashes, lockedTarget, blackHoles, dead, kills, laserBeam, remoteLasers) {
   const w = canvas.width;
   const h = canvas.height;
+  // Safety: ensure ship state is finite (prevents invisible world if NaN creeps in)
+  if (!isFinite(ship.angle)) ship.angle = 0;
+  if (!isFinite(ship.x)) ship.x = 0;
+  if (!isFinite(ship.y)) ship.y = 0;
   const cam = getCamera(ship, w, h);
 
   ctx.fillStyle = '#0a0a1a';
@@ -89,7 +98,7 @@ export function render(ctx, canvas, ship, input, remotePlayers, localHue, projec
   // Draw remote ships
   if (remotePlayers) {
     for (const rp of remotePlayers) {
-      drawRemoteShip(ctx, rp, ship, cam);
+      if (!rp.dead) drawRemoteShip(ctx, rp, ship, cam);
     }
   }
 
@@ -99,11 +108,17 @@ export function render(ctx, canvas, ship, input, remotePlayers, localHue, projec
   }
 
   if (!dead) {
+    const ks = killScale(kills || 0);
     // Draw thrusters (screen space, ship faces up)
-    drawThrusters(ctx, cam.screenX, cam.screenY, input);
+    drawThrusters(ctx, cam.screenX, cam.screenY, input, ks);
 
     // Draw ship (fixed screen position, facing up)
-    drawShip(ctx, cam.screenX, cam.screenY, localHue);
+    drawShip(ctx, cam.screenX, cam.screenY, localHue, ks);
+
+    // Draw laser beam
+    if (laserBeam && laserBeam.length > 1) {
+      drawLaserBeam(ctx, laserBeam, ship, cam);
+    }
   } else {
     // Draw respawn overlay
     ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
@@ -115,6 +130,13 @@ export function render(ctx, canvas, ship, input, remotePlayers, localHue, projec
     ctx.fillStyle = '#aaa';
     ctx.font = '20px system-ui';
     ctx.fillText('Respawning...', w / 2, h / 2 + 25);
+  }
+
+  // Draw remote laser beams
+  if (remoteLasers && remoteLasers.size > 0) {
+    for (const points of remoteLasers.values()) {
+      if (points && points.length > 1) drawLaserBeam(ctx, points, ship, cam);
+    }
   }
 }
 
@@ -184,16 +206,17 @@ function drawWorldLine(ctx, x1, y1, x2, y2, ship, cam) {
   }
 }
 
-function drawShip(ctx, sx, sy, hue) {
+function drawShip(ctx, sx, sy, hue, scale = 1) {
+  const s = SHIP_SIZE * scale;
   ctx.save();
   ctx.translate(sx, sy);
-  ctx.rotate(-Math.PI / 2); // nose points up
+  ctx.rotate(-Math.PI / 2);
 
   ctx.beginPath();
-  ctx.moveTo(SHIP_SIZE, 0);
-  ctx.lineTo(-SHIP_SIZE * 0.7, -SHIP_SIZE * 0.6);
-  ctx.lineTo(-SHIP_SIZE * 0.4, 0);
-  ctx.lineTo(-SHIP_SIZE * 0.7, SHIP_SIZE * 0.6);
+  ctx.moveTo(s, 0);
+  ctx.lineTo(-s * 0.7, -s * 0.6);
+  ctx.lineTo(-s * 0.4, 0);
+  ctx.lineTo(-s * 0.7, s * 0.6);
   ctx.closePath();
 
   ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
@@ -209,7 +232,8 @@ function drawRemoteShip(ctx, remote, localShip, cam) {
   const p = project(rx, ry, cam);
   if (!p) return;
 
-  const size = SHIP_SIZE * p.scale;
+  const ks = killScale(remote.kills || 0);
+  const size = SHIP_SIZE * ks * p.scale;
   // Remote ship's angle in screen space: subtract local ship's angle
   // (since the world is viewed rotated so local ship faces up)
   const screenAngle = remote.angle - localShip.angle;
@@ -331,6 +355,27 @@ function drawBlackHole(ctx, bh, localShip, cam) {
   ctx.fill();
 }
 
+function drawLaserBeam(ctx, points, localShip, cam) {
+  const total = points.length;
+  for (let i = 0; i < total - 1; i++) {
+    const p0 = points[i];
+    const p1 = points[i + 1];
+    const r0 = worldToShipRelative(p0.x, p0.y, localShip);
+    const r1 = worldToShipRelative(p1.x, p1.y, localShip);
+    const s0 = project(r0.rx, r0.ry, cam);
+    const s1 = project(r1.rx, r1.ry, cam);
+    if (!s0 || !s1) continue;
+
+    const t = 1 - i / total; // 1 at start, 0 at end
+    ctx.beginPath();
+    ctx.moveTo(s0.sx, s0.sy);
+    ctx.lineTo(s1.sx, s1.sy);
+    ctx.strokeStyle = `rgba(255, 60, 60, ${t * 0.9})`;
+    ctx.lineWidth = Math.max(1, 3 * t * s0.scale);
+    ctx.stroke();
+  }
+}
+
 function drawLockIndicator(ctx, target, localShip, cam) {
   const { rx, ry } = worldToShipRelative(target.x, target.y, localShip);
   const p = project(rx, ry, cam);
@@ -346,26 +391,35 @@ function drawLockIndicator(ctx, target, localShip, cam) {
   ctx.restore();
 }
 
-function drawThrusters(ctx, sx, sy, input) {
+function drawThrusters(ctx, sx, sy, input, scale = 1) {
+  const steer = input.steer || 0;
+  const moveX = input.moveX || 0;
+  const moveY = input.moveY || 0;
+  const leftY = moveY + steer * 0.5;
+  const leftX = moveX;
+  const rightY = moveY - steer * 0.5;
+  const rightX = moveX;
+  const s = SHIP_SIZE * scale;
+
   ctx.save();
   ctx.translate(sx, sy);
   ctx.rotate(-Math.PI / 2);
 
-  drawThrusterFlame(ctx, -SHIP_SIZE * 0.5, -SHIP_SIZE * 0.5, input.rightX, -input.rightY);
-  drawThrusterFlame(ctx, -SHIP_SIZE * 0.5, SHIP_SIZE * 0.5, input.leftX, -input.leftY);
+  drawThrusterFlame(ctx, -s * 0.5, -s * 0.5, rightX, rightY, s);
+  drawThrusterFlame(ctx, -s * 0.5, s * 0.5, leftX, leftY, s);
 
   ctx.restore();
 }
 
-function drawThrusterFlame(ctx, tx, ty, stickX, stickY) {
+function drawThrusterFlame(ctx, tx, ty, stickX, stickY, shipSize = SHIP_SIZE) {
   const magnitude = Math.sqrt(stickX * stickX + stickY * stickY);
-  if (magnitude < 0.05) return;
+  if (!isFinite(magnitude) || magnitude < 0.05) return;
 
   const thrustLocalX = stickY / magnitude;
   const thrustLocalY = stickX / magnitude;
   const flameX = -thrustLocalX;
   const flameY = -thrustLocalY;
-  const length = SHIP_SIZE * 0.8 * magnitude;
+  const length = shipSize * 0.8 * magnitude;
 
   ctx.save();
   ctx.translate(tx, ty);

@@ -40,9 +40,9 @@ export function createNavigation(uiContainer, canvas, onGameStart) {
     const btn = uiContainer.querySelector('[data-action="start-host"], [data-action="join-session"]');
     if (!btn) return;
     if (currentScreen === 'host') {
-      btn.disabled = !state.gamepadConnected || !state.name;
+      btn.disabled = !state.name;
     } else if (currentScreen === 'join') {
-      btn.disabled = !state.gamepadConnected || !state.name || !state.adj1 || !state.adj2 || !state.animal;
+      btn.disabled = !state.name || !state.adj1 || !state.adj2 || !state.animal;
     }
   }
 

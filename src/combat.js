@@ -4,9 +4,11 @@
 // Other clients lerp to the streamed positions and run collision against local ship.
 
 import { WEAPONS, createProjectile, updateProjectile, acquireTarget } from './weapons.js';
-import { spawnExplosion } from './effects.js';
+import { spawnExplosion, spawnDeathExplosion } from './effects.js';
 
 const ENERGY_REGEN_RATE = 0.12; // per second
+const MOVEMENT_ENERGY_RATE = 0.10; // per second at full thrust (slightly below regen)
+const BOOST_ENERGY_RATE = 0.14; // per second while boosting (slightly above regen)
 const REPAIR_RATE = 0.15; // health per second while channeling
 const REPAIR_ENERGY_COST = 0.2; // energy per second while repairing
 const SHIP_RADIUS = 18;
@@ -19,10 +21,12 @@ export function createCombatState() {
     energy: 1,
     weapon: 0,
     cooldown: 0,
-    projectiles: [], // local projectiles (we are authoritative)
-    remoteProjectiles: [], // from other players (streamed)
+    projectiles: [],
+    remoteProjectiles: [],
     dead: false,
     respawnTimer: 0,
+    kills: 0,
+    lastHitBy: null,
   };
 }
 
@@ -48,7 +52,7 @@ export function tryFire(combat, ship, lockedTarget) {
   return projectiles;
 }
 
-export function updateCombat(combat, ship, dt, remotes, isFireHeld) {
+export function updateCombat(combat, ship, dt, remotes, isFireHeld, thrustMag = 0, boost = false) {
   // Handle respawn timer
   if (combat.dead) {
     combat.respawnTimer -= dt;
@@ -56,12 +60,17 @@ export function updateCombat(combat, ship, dt, remotes, isFireHeld) {
       combat.dead = false;
       combat.health = 1;
       combat.energy = 1;
+      return { hits: [], died: false, respawned: true };
     }
-    return { hits: [], died: false };
+    return { hits: [], died: false, respawned: false };
   }
 
   combat.cooldown = Math.max(0, combat.cooldown - dt);
   combat.energy = Math.min(1, combat.energy + ENERGY_REGEN_RATE * dt);
+
+  // Movement energy drain (scaled by input magnitude)
+  combat.energy = Math.max(0, combat.energy - thrustMag * MOVEMENT_ENERGY_RATE * dt);
+  if (boost) combat.energy = Math.max(0, combat.energy - BOOST_ENERGY_RATE * dt);
 
   const weapon = WEAPONS[combat.weapon];
   if (weapon.isRepair && isFireHeld && combat.energy >= REPAIR_ENERGY_COST * dt) {
@@ -97,6 +106,7 @@ export function updateCombat(combat, ship, dt, remotes, isFireHeld) {
     const dy = p.y - ship.y;
     if (dx * dx + dy * dy < (SHIP_RADIUS + p.size) ** 2) {
       combat.health = Math.max(0, combat.health - p.damage);
+      combat.lastHitBy = p.owner || null;
       spawnExplosion(p.x, p.y, p.damage);
       hits.push({ id: p.id, x: p.x, y: p.y, damage: p.damage });
       combat.remoteProjectiles.splice(i, 1);
@@ -105,20 +115,23 @@ export function updateCombat(combat, ship, dt, remotes, isFireHeld) {
 
   // Check for death
   let died = false;
+  let killedBy = null;
   if (combat.health <= 0) {
     combat.dead = true;
     combat.respawnTimer = RESPAWN_TIME;
-    spawnExplosion(ship.x, ship.y, 1); // big death explosion
+    spawnDeathExplosion(ship.x, ship.y);
     died = true;
+    killedBy = combat.lastHitBy;
+    combat.kills = 0;
+    combat.lastHitBy = null;
   }
 
-  return { hits, died };
+  return { hits, died, respawned: false, killedBy };
 }
 
-// Initial projectile spawn from remote player
-export function receiveProjectiles(combat, projectiles) {
+export function receiveProjectiles(combat, projectiles, owner) {
   for (const p of projectiles) {
-    combat.remoteProjectiles.push({ ...p, tx: p.x, ty: p.y });
+    combat.remoteProjectiles.push({ ...p, tx: p.x, ty: p.y, owner });
   }
 }
 
