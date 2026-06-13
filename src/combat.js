@@ -82,8 +82,19 @@ export function updateCombat(combat, ship, dt, remotes, isFireHeld, thrustMag = 
   const targets = remotes.map((r, i) => ({ id: i, x: r.x, y: r.y }));
   for (let i = combat.projectiles.length - 1; i >= 0; i--) {
     const p = combat.projectiles[i];
+    p.age += dt;
     updateProjectile(p, dt, targets);
-    if (p.life <= 0) combat.projectiles.splice(i, 1);
+    if (p.life <= 0) { spawnExplosion(p.x, p.y, 0.02); combat.projectiles.splice(i, 1); continue; }
+    // Self-damage (after grace period)
+    if (p.age > 0.3) {
+      const dx = p.x - ship.x;
+      const dy = p.y - ship.y;
+      if (dx * dx + dy * dy < (SHIP_RADIUS + p.size) ** 2) {
+        combat.health = Math.max(0, combat.health - p.damage);
+        spawnExplosion(p.x, p.y, p.damage);
+        combat.projectiles.splice(i, 1);
+      }
+    }
   }
 
   // Update remote projectiles (lerp toward streamed positions)
@@ -95,7 +106,7 @@ export function updateCombat(combat, ship, dt, remotes, isFireHeld, thrustMag = 
       p.y += (p.ty - p.y) * t;
     }
     p.life -= dt;
-    if (p.life <= 0) combat.remoteProjectiles.splice(i, 1);
+    if (p.life <= 0) { spawnExplosion(p.x, p.y, 0.02); combat.remoteProjectiles.splice(i, 1); }
   }
 
   // Collision: remote projectiles hitting local ship

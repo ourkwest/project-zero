@@ -4,9 +4,9 @@
 // Homing missiles accelerate toward their target rather than turning.
 
 export const WEAPONS = [
-  { name: 'Small Gun', energyCost: 0.08, damage: 0.1, launchSpeed: 800, size: 3, cooldown: 0.2, spread: 0, count: 1, lifetime: 3 },
-  { name: 'Big Gun', energyCost: 0.3, damage: 0.35, launchSpeed: 400, size: 8, cooldown: 0.8, spread: 0, count: 1, lifetime: 3 },
-  { name: 'Shotgun', energyCost: 0.1, damage: 0.04, launchSpeed: 700, size: 2, cooldown: 0.4, spread: 0.3, count: 7, lifetime: 2, randomSpread: 0.15 },
+  { name: 'Small Gun', energyCost: 0.08, damage: 0.1, launchSpeed: 800, size: 3, cooldown: 0.2, spread: 0, count: 1, lifetime: 4 },
+  { name: 'Big Gun', energyCost: 0.3, damage: 0.35, launchSpeed: 400, size: 8, cooldown: 0.8, spread: 0, count: 1, lifetime: 4 },
+  { name: 'Shotgun', energyCost: 0.1, damage: 0.04, launchSpeed: 700, size: 2, cooldown: 0.4, spread: 0.3, count: 7, lifetime: 4, randomSpread: 0.15 },
   { name: 'Homing Missile', energyCost: 0.25, damage: 0.15, launchSpeed: 300, size: 5, cooldown: 1.0, spread: 0, count: 1, lifetime: 14, homingAccel: 600 },
   { name: 'Laser', energyCost: 0.15, damage: 0.2, launchSpeed: 0, size: 0, cooldown: 0, spread: 0, count: 0, lifetime: 0, isLaser: true },
   { name: 'Repair', energyCost: 0, damage: 0, launchSpeed: 0, size: 0, cooldown: 0, spread: 0, count: 0, lifetime: 0, isRepair: true },
@@ -43,6 +43,7 @@ export function createProjectile(ship, weapon, index, lockedTargetId) {
     homing: !!weapon.homingAccel,
     homingAccel: weapon.homingAccel || 0,
     life: weapon.lifetime || 3,
+    age: 0,
     targetId: lockedTargetId ?? null,
   };
 }

@@ -90,9 +90,9 @@ export function pollInput(dt) {
   let gpBoost = false;
 
   if (gp) {
-    gpSteer = applyDeadzone(gp.axes[0] || 0); // left stick X
-    gpMoveX = applyDeadzone(gp.axes[2] || 0); // right stick X (strafe)
-    gpMoveY = -applyDeadzone(gp.axes[3] || 0); // right stick Y (forward = negative axis = positive moveY)
+    gpSteer = applyDeadzone(gp.axes[0] || 0); // left stick X = steering
+    gpMoveX = applyDeadzone(gp.axes[2] || 0); // right stick X = strafe
+    gpMoveY = -applyDeadzone(gp.axes[3] || 0); // right stick Y = forward/backward
 
     gpFire = gp.buttons[7]?.pressed || false;  // R2
     gpFirePressed = gpFire && !prevGpFire;

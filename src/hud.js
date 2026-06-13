@@ -13,20 +13,22 @@ export function drawHUD(ctx, w, h, playerState, otherPlayers, camera) {
   const sx = camera.screenX;
   const sy = camera.screenY;
 
-  // Health arc around ship (green, shrinks from behind)
-  drawHealthArc(ctx, sx, sy, playerState.health);
+  if (!playerState.dead) {
+    // Health arc around ship (green, shrinks from behind)
+    drawHealthArc(ctx, sx, sy, playerState.health);
 
-  // Energy bar below ship
-  const barX = sx - ENERGY_BAR_W / 2;
-  const barY = sy + HEALTH_ARC_RADIUS + 10;
-  drawEnergyBar(ctx, barX, barY, playerState.energy);
+    // Energy bar below ship
+    const barX = sx - ENERGY_BAR_W / 2;
+    const barY = sy + HEALTH_ARC_RADIUS + 10;
+    drawEnergyBar(ctx, barX, barY, playerState.energy);
 
-  // Weapon name below energy bar
-  ctx.font = '11px monospace';
-  ctx.fillStyle = 'rgba(255,255,255,0.7)';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  ctx.fillText(WEAPONS[playerState.weapon] || 'Unknown', sx, barY + ENERGY_BAR_H + 4);
+    // Weapon name below energy bar
+    ctx.font = '11px monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(WEAPONS[playerState.weapon] || 'Unknown', sx, barY + ENERGY_BAR_H + 4);
+  }
 
   // Kill count leaderboard (top-right)
   drawLeaderboard(ctx, w, playerState.kills, otherPlayers);
@@ -48,7 +50,7 @@ function drawHealthArc(ctx, cx, cy, health) {
 
   ctx.beginPath();
   ctx.arc(cx, cy, HEALTH_ARC_RADIUS, startAngle, endAngle);
-  ctx.strokeStyle = `rgba(80, 220, 80, ${0.5 + health * 0.4})`;
+  ctx.strokeStyle = `rgba(80, 220, 80, ${0.25 + health * 0.25})`;
   ctx.lineWidth = 3;
   ctx.stroke();
 }

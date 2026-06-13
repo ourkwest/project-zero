@@ -87,23 +87,22 @@ export function createNavigation(uiContainer, canvas, onGameStart) {
   }
 
   function spreadHue(players) {
-    // Minimum separation: 360 / max_players = 30°
-    const MIN_SEP = 30;
-    // First player keeps their exact hue. Subsequent players get nudged if too close.
-    for (let i = 1; i < players.length; i++) {
-      let hue = players[i].hue;
-      // Check against all previously assigned hues
-      for (let attempt = 0; attempt < 360; attempt++) {
-        let tooClose = false;
-        for (let j = 0; j < i; j++) {
-          const diff = Math.abs(((hue - players[j].hue + 180) % 360 + 360) % 360 - 180);
-          if (diff < MIN_SEP) { tooClose = true; break; }
-        }
-        if (!tooClose) break;
-        // Nudge clockwise
-        hue = (hue + 1) % 360;
+    // Ensure minimum 45° separation. If any pair is too close, redistribute evenly.
+    const MIN_SEP = 45;
+    let needsRedistribute = false;
+    for (let i = 0; i < players.length && !needsRedistribute; i++) {
+      for (let j = i + 1; j < players.length; j++) {
+        const diff = Math.abs(((players[i].hue - players[j].hue + 180) % 360 + 360) % 360 - 180);
+        if (diff < MIN_SEP) { needsRedistribute = true; break; }
       }
-      players[i].hue = hue;
+    }
+    if (needsRedistribute) {
+      // Evenly space all players around the hue wheel, starting from player 0's hue
+      const base = players[0].hue;
+      const step = Math.floor(360 / players.length);
+      for (let i = 1; i < players.length; i++) {
+        players[i].hue = (base + step * i) % 360;
+      }
     }
   }
 
@@ -118,7 +117,10 @@ export function createNavigation(uiContainer, canvas, onGameStart) {
       isHost: true,
     };
     network = createHost(key, {
-      onReady: () => show('session'),
+      onReady: () => {
+        history.replaceState(null, '', `?session=${key}`);
+        show('session');
+      },
       onPlayerJoin: (peerId, info) => {
         sessionState.players.push({ peerId, ...info });
         spreadHue(sessionState.players);
@@ -149,8 +151,10 @@ export function createNavigation(uiContainer, canvas, onGameStart) {
       onReady: () => show('session'),
       onPlayerList: (players) => {
         sessionState.players = players;
-        // Pick our assigned hue from the host's player list
-        const me = players.find(p => p.name === state.name && p.peerId !== 'host');
+        // Pick our assigned hue - try by peerId, fall back to last non-host entry
+        const myId = network?.getLocalId?.();
+        let me = myId && players.find(p => p.peerId === myId);
+        if (!me) me = players.filter(p => p.peerId !== 'host').pop();
         if (me) state.hue = me.hue;
         renderScreen();
       },
@@ -215,7 +219,8 @@ export function createNavigation(uiContainer, canvas, onGameStart) {
     if (params.has('session')) {
       const parts = params.get('session').split('-');
       if (parts.length === 3) {
-        state.adj1 = parts[0]; state.adj2 = parts[1]; state.animal = parts[2];
+        const cap = s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+        state.adj1 = cap(parts[0]); state.adj2 = cap(parts[1]); state.animal = cap(parts[2]);
         show('join');
         return;
       }

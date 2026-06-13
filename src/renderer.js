@@ -228,34 +228,44 @@ function drawShip(ctx, sx, sy, hue, scale = 1) {
 }
 
 function drawRemoteShip(ctx, remote, localShip, cam) {
-  const { rx, ry } = worldToShipRelative(remote.x, remote.y, localShip);
-  const p = project(rx, ry, cam);
-  if (!p) return;
-
   const ks = killScale(remote.kills || 0);
-  const size = SHIP_SIZE * ks * p.scale;
-  // Remote ship's angle in screen space: subtract local ship's angle
-  // (since the world is viewed rotated so local ship faces up)
-  const screenAngle = remote.angle - localShip.angle;
+  const size = SHIP_SIZE * ks;
+  const shipAngle = remote.angle;
 
-  ctx.save();
-  ctx.translate(p.sx, p.sy);
-  ctx.rotate((remote.angle - localShip.angle) - Math.PI / 2);
+  // Define vertices in world space (rotated by ship's angle, offset from ship position)
+  const cos = Math.cos(shipAngle);
+  const sin = Math.sin(shipAngle);
+  const verts = [
+    { x: size, y: 0 },           // nose
+    { x: -size * 0.7, y: -size * 0.6 }, // top-left
+    { x: -size * 0.4, y: 0 },    // indent
+    { x: -size * 0.7, y: size * 0.6 },  // bottom-left
+  ];
+
+  // Rotate vertices by ship angle and offset to world position, then project each
+  const projected = [];
+  for (const v of verts) {
+    const wx = remote.x + v.x * cos - v.y * sin;
+    const wy = remote.y + v.x * sin + v.y * cos;
+    const { rx, ry } = worldToShipRelative(wx, wy, localShip);
+    const p = project(rx, ry, cam);
+    if (!p) return; // any vertex behind camera → skip entire ship
+    projected.push(p);
+  }
 
   ctx.beginPath();
-  ctx.moveTo(size, 0);
-  ctx.lineTo(-size * 0.7, -size * 0.6);
-  ctx.lineTo(-size * 0.4, 0);
-  ctx.lineTo(-size * 0.7, size * 0.6);
+  ctx.moveTo(projected[0].sx, projected[0].sy);
+  for (let i = 1; i < projected.length; i++) {
+    ctx.lineTo(projected[i].sx, projected[i].sy);
+  }
   ctx.closePath();
 
   const hue = remote.hue ?? 0;
   ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
   ctx.strokeStyle = `hsl(${hue}, 80%, 70%)`;
-  ctx.lineWidth = 2 * p.scale;
+  ctx.lineWidth = 2 * projected[0].scale;
   ctx.fill();
   ctx.stroke();
-  ctx.restore();
 }
 
 function drawProjectile(ctx, p, localShip, cam, remotePlayers) {
@@ -280,7 +290,7 @@ function drawProjectile(ctx, p, localShip, cam, remotePlayers) {
   const size = Math.max(1.5, p.size * proj.scale);
   ctx.beginPath();
   ctx.arc(proj.sx, proj.sy, size, 0, Math.PI * 2);
-  const alpha = Math.min(1, p.life) * proximityFade;
+  const alpha = proximityFade;
   ctx.fillStyle = p.homing
     ? `rgba(255, 80, 80, ${alpha})`
     : `rgba(255, 255, 100, ${alpha})`;

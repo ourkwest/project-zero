@@ -172,3 +172,21 @@ More ideas for weapons please.
 6. **Railgun** — Instant hitscan line (no gravity bending), very high damage, very long cooldown (~4s), narrow (no AoE). High-risk high-reward sniper weapon.
 7. **Scatter Rockets** — Fires 3 slow-moving rockets that fan out, then after 1 second all turn toward the nearest enemy. Less accurate than homing missile but harder to evade as a group.
 8. **Plasma Wall** — Fires a short-lived barrier (perpendicular to your heading) that damages enemies who fly through it. Acts as area denial — forces opponents to go around or take damage.
+
+
+# Feedback 2
+
+'Start Game' button should read 'Start Session' as clicking it does not immediately start the gameplay.
+Starting a session as host should add the session id to the URL. 
+The join screen should have the session id dropdowns filled if they are provided in the URL.
+The colors of players can still be too similar - there should be logic to separate them, but it might need revisiting.
+Guest session id is displayed lower case, host is Title Case. They should match, but I don't mind what case is used.
+When the ship disappears during the respawn pause, so should the energy bar and weapon selection indicator
+The health arc should be less opaque
+Laser needs at least double the range, and more gravity curvature.
+Strafing and Turning should stay where they are, but moving forwards/backwards should change to the left stick with the turning.
+
+
+
+- are we tracking both age and lifetime on the projectiles?
+- are there other simplifications that could be made to the code?

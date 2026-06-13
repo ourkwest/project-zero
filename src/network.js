@@ -28,7 +28,6 @@ export function createHost(sessionKey, callbacks, hostInfo) {
       if (data.type === 'join') {
         connections.set(conn.peer, { conn, playerInfo: data.playerInfo });
         callbacks.onPlayerJoin?.(conn.peer, data.playerInfo);
-        broadcastPlayerList(connections, callbacks, hostInfo);
       } else if (data.type === 'game') {
         // Relay game data to all other peers
         for (const [id, { conn: c }] of connections) {
@@ -43,7 +42,6 @@ export function createHost(sessionKey, callbacks, hostInfo) {
     conn.on('close', () => {
       connections.delete(conn.peer);
       callbacks.onPlayerLeave?.(conn.peer);
-      broadcastPlayerList(connections, callbacks, hostInfo);
     });
   });
 

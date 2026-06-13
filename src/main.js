@@ -157,7 +157,7 @@ function loop(now) {
   remoteLasers.clear();
 
   const cam = getCamera(ship, canvas.width, canvas.height);
-  drawHUD(ctx, canvas.width, canvas.height, { health: combat.health, energy: combat.energy, weapon: combat.weapon, kills: combat.kills }, remotes, cam);
+  drawHUD(ctx, canvas.width, canvas.height, { health: combat.health, energy: combat.energy, weapon: combat.weapon, kills: combat.kills, dead: combat.dead }, remotes, cam);
 
   requestAnimationFrame(loop);
 }

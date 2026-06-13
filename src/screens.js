@@ -33,7 +33,7 @@ export function hostScreen({ name = '', hue = 180, gamepadConnected = false, gam
       <div class="gamepad-status ${gamepadConnected ? 'connected' : ''}">
         Gamepad: ${gamepadConnected ? '✓ Connected' : '✗ Not detected'}
       </div>
-      <button data-action="start-host" ${!name ? 'disabled' : ''}>Start Game</button>
+      <button data-action="start-host" ${!name ? 'disabled' : ''}>Start Session</button>
       <button data-action="back" class="secondary">Back</button>
     </div>
   `;

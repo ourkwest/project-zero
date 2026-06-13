@@ -4,10 +4,10 @@
 
 import { getBlackHoles } from './black-holes.js';
 
-const LASER_RANGE = 500; // ~25x ship length
+const LASER_RANGE = 1500; // ~75x ship length
 const BEAM_SPEED = 2000; // simulation speed for tracing
-const BEAM_STEPS = 40;
-const GRAVITY_STRENGTH = 500000;
+const BEAM_STEPS = 60;
+const GRAVITY_STRENGTH = 1500000;
 const HIT_RADIUS = 18;
 const LASER_DPS = 0.4; // damage per second while beam is on target
 
