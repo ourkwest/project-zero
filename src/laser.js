@@ -57,6 +57,14 @@ export function traceLaser(ship, remotes, dt) {
         }
       }
     }
+    // Self-hit (after grace distance)
+    if (!hitTarget && i > 10) {
+      const dx = x - ship.x;
+      const dy = y - ship.y;
+      if (dx * dx + dy * dy < HIT_RADIUS * HIT_RADIUS) {
+        hitTarget = { index: -1, damage: LASER_DPS * dt, x, y, self: true };
+      }
+    }
     if (hitTarget) break;
   }
 

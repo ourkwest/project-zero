@@ -6,7 +6,7 @@ import { drawHUD } from './hud.js';
 import { createNavigation } from './navigation.js';
 import { createRemotePlayers } from './remote-players.js';
 import { createCombatState, cycleWeapon, tryFire, updateCombat, receiveProjectiles, updateRemoteProjectilePositions, receiveHits, getLocalProjectilePositions, getAllProjectiles } from './combat.js';
-import { updateEffects, getParticles, getFlashes, spawnExplosion } from './effects.js';
+import { updateEffects, getParticles, getFlashes, getRipples, spawnExplosion, spawnFlash, spawnRipple } from './effects.js';
 import { WEAPONS, acquireTarget } from './weapons.js';
 import { spawnBlackHole, addRemoteBlackHole, applyGravity, getBlackHoles } from './black-holes.js';
 import { traceLaser } from './laser.js';
@@ -22,6 +22,7 @@ let running = false;
 let network = null;
 let remotePlayers = null;
 let localHue = 0;
+let localName = '';
 
 const BROADCAST_INTERVAL = 50; // ms between state broadcasts
 let lastBroadcast = 0;
@@ -43,7 +44,7 @@ function onGameData(peerId, payload) {
     if (network && payload.target === network.getLocalId() && combat) {
       combat.health = Math.max(0, combat.health - payload.damage);
       combat.lastHitBy = peerId;
-      spawnExplosion(payload.x, payload.y, payload.damage);
+      spawnRipple(payload.x, payload.y);
     }
   } else if (payload.type === 'death') {
     addRemoteBlackHole(payload.blackHole.id, payload.blackHole.x, payload.blackHole.y);
@@ -57,6 +58,7 @@ function onGameData(peerId, payload) {
 function startGame(net, sessionState) {
   network = net;
   localHue = sessionState?.localHue ?? 0;
+  localName = sessionState?.players?.[sessionState?.isHost ? 0 : sessionState.players.length - 1]?.name || '';
   ctx = initRenderer(canvas);
   initKeyboardMouse(canvas);
 
@@ -100,10 +102,15 @@ function loop(now) {
     if (network) {
       network.broadcast({ type: 'laser', points });
     }
-    if (hitTarget && network) {
-      network.broadcast({ type: 'laser_hit', target: remotes[hitTarget.index]?.peerId, damage: hitTarget.damage, x: hitTarget.x, y: hitTarget.y });
+    if (hitTarget) {
+      spawnRipple(hitTarget.x, hitTarget.y);
+      if (hitTarget.self) {
+        combat.health = Math.max(0, combat.health - hitTarget.damage);
+      } else if (network) {
+        network.broadcast({ type: 'laser_hit', target: remotes[hitTarget.index]?.peerId, damage: hitTarget.damage, x: hitTarget.x, y: hitTarget.y });
+      }
     }
-  } else if (!combat.dead && input.firePressed && !currentWeapon?.isLaser) {
+  } else if (!combat.dead && input.fire && !currentWeapon?.isLaser && !currentWeapon?.isRepair) {
     const fired = tryFire(combat, ship, lockedTarget);
     if (fired && network) {
       network.broadcast({ type: 'projectiles', projectiles: fired });
@@ -144,7 +151,7 @@ function loop(now) {
       network.broadcast({
         type: 'ship',
         state: { x: ship.x, y: ship.y, vx: ship.vx, vy: ship.vy, angle: ship.angle, angularVel: ship.angularVel },
-        info: { hue: localHue, kills: combat.kills },
+        info: { hue: localHue, kills: combat.kills, name: localName },
       });
     }
     const positions = getLocalProjectilePositions(combat);
@@ -153,7 +160,7 @@ function loop(now) {
     }
   }
 
-  render(ctx, canvas, ship, input, remotes, localHue, allProjectiles, getParticles(), getFlashes(), lockedTarget, getBlackHoles(), combat.dead, combat.kills, laserBeam, remoteLasers);
+  render(ctx, canvas, ship, input, remotes, localHue, allProjectiles, getParticles(), getFlashes(), getRipples(), lockedTarget, getBlackHoles(), combat.dead, combat.kills, laserBeam, remoteLasers);
   remoteLasers.clear();
 
   const cam = getCamera(ship, canvas.width, canvas.height);

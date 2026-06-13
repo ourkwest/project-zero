@@ -187,6 +187,3 @@ Laser needs at least double the range, and more gravity curvature.
 Strafing and Turning should stay where they are, but moving forwards/backwards should change to the left stick with the turning.
 
 
-
-- are we tracking both age and lifetime on the projectiles?
-- are there other simplifications that could be made to the code?

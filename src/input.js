@@ -24,7 +24,6 @@ const MOUSE_STEER_DECAY = 8; // decay rate per second when no mouse movement
 let lastMouseMoveTime = 0;
 
 export function setGamepadIndex(index) { selectedIndex = index; }
-export function getGamepadIndex() { return selectedIndex; }
 
 export function getConnectedGamepads() {
   const gps = navigator.getGamepads();
@@ -151,6 +150,3 @@ export function pollInput(dt) {
 }
 
 function clamp(v, min, max) { return v < min ? min : v > max ? max : v; }
-
-// Legacy compatibility - keep pollGamepad as alias
-export function pollGamepad() { return pollInput(0.016); }

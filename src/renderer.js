@@ -49,7 +49,7 @@ function project(rx, ry, cam) {
   return { sx, sy, scale };
 }
 
-export function render(ctx, canvas, ship, input, remotePlayers, localHue, projectiles, particles, flashes, lockedTarget, blackHoles, dead, kills, laserBeam, remoteLasers) {
+export function render(ctx, canvas, ship, input, remotePlayers, localHue, projectiles, particles, flashes, ripples, lockedTarget, blackHoles, dead, kills, laserBeam, remoteLasers) {
   const w = canvas.width;
   const h = canvas.height;
   // Safety: ensure ship state is finite (prevents invisible world if NaN creeps in)
@@ -92,6 +92,13 @@ export function render(ctx, canvas, ship, input, remotePlayers, localHue, projec
   if (flashes) {
     for (const f of flashes) {
       drawFlash(ctx, f, ship, cam);
+    }
+  }
+
+  // Draw laser ripples
+  if (ripples) {
+    for (const r of ripples) {
+      drawRipple(ctx, r, ship, cam);
     }
   }
 
@@ -331,6 +338,21 @@ function drawFlash(ctx, f, localShip, cam) {
   ctx.beginPath();
   ctx.arc(proj.sx, proj.sy, radius, 0, Math.PI * 2);
   ctx.fill();
+}
+
+function drawRipple(ctx, r, localShip, cam) {
+  const { rx, ry } = worldToShipRelative(r.x, r.y, localShip);
+  const proj = project(rx, ry, cam);
+  if (!proj) return;
+
+  const t = r.life / r.maxLife; // 1→0
+  const radius = r.radius * proj.scale * (1 + (1 - t) * 2); // expands outward
+  const alpha = t * 0.8;
+  ctx.beginPath();
+  ctx.arc(proj.sx, proj.sy, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(255, 80, 80, ${alpha})`;
+  ctx.lineWidth = Math.max(1, 2 * proj.scale * t);
+  ctx.stroke();
 }
 
 function drawBlackHole(ctx, bh, localShip, cam) {

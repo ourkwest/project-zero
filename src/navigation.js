@@ -10,7 +10,7 @@ const GAMEPAD_POLL_INTERVAL = 500;
 
 export function createNavigation(uiContainer, canvas, onGameStart) {
   let currentScreen = 'splash';
-  let state = { name: 'Player 1', hue: Math.floor(Math.random() * 360), gamepadConnected: false, gamepadIndex: 0, gamepads: [], adj1: '', adj2: '', animal: '' };
+  let state = { name: '', hue: Math.floor(Math.random() * 360), gamepadConnected: false, gamepadIndex: 0, gamepads: [], adj1: '', adj2: '', animal: '' };
   let sessionState = { sessionId: null, players: [], isHost: false };
   let network = null;
   let gamepadTimer = null;
@@ -78,8 +78,8 @@ export function createNavigation(uiContainer, canvas, onGameStart) {
   }
 
   function handleAction(action) {
-    if (action === 'host') { isJoin = false; show('host'); }
-    else if (action === 'join') { isJoin = true; state.name = 'Player 2'; show('join'); }
+    if (action === 'host') { isJoin = false; state.name = state.name || 'Player 1'; show('host'); }
+    else if (action === 'join') { isJoin = true; state.name = state.name || 'Player ' + (2 + Math.floor(Math.random() * 98)); show('join'); }
     else if (action === 'back') { destroyNetwork(); show('splash'); }
     else if (action === 'start-host') { setGamepadIndex(state.gamepadIndex); startHost(); }
     else if (action === 'join-session') { setGamepadIndex(state.gamepadIndex); joinGame(); }
@@ -221,6 +221,7 @@ export function createNavigation(uiContainer, canvas, onGameStart) {
       if (parts.length === 3) {
         const cap = s => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
         state.adj1 = cap(parts[0]); state.adj2 = cap(parts[1]); state.animal = cap(parts[2]);
+        state.name = 'Player ' + (2 + Math.floor(Math.random() * 98));
         show('join');
         return;
       }

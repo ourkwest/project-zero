@@ -41,17 +41,29 @@ export function drawHUD(ctx, w, h, playerState, otherPlayers, camera) {
 
 function drawHealthArc(ctx, cx, cy, health) {
   if (health <= 0) return;
-  // Full circle at 100%, shrinks toward the back (bottom of ship = Math.PI/2 in screen space)
-  // Arc extent = health * 2π, centered behind ship (behind = bottom = angle π/2)
   const extent = health * Math.PI * 2;
-  // Center the arc at the back of the ship (π/2 = down = behind since ship faces up)
   const startAngle = Math.PI / 2 - extent / 2;
   const endAngle = Math.PI / 2 + extent / 2;
 
+  // Outer glow (wide, faint)
   ctx.beginPath();
   ctx.arc(cx, cy, HEALTH_ARC_RADIUS, startAngle, endAngle);
-  ctx.strokeStyle = `rgba(80, 220, 80, ${0.25 + health * 0.25})`;
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = `rgba(80, 220, 80, 0.08)`;
+  ctx.lineWidth = 10;
+  ctx.stroke();
+
+  // Mid glow
+  ctx.beginPath();
+  ctx.arc(cx, cy, HEALTH_ARC_RADIUS, startAngle, endAngle);
+  ctx.strokeStyle = `rgba(80, 220, 80, 0.2)`;
+  ctx.lineWidth = 5;
+  ctx.stroke();
+
+  // Bright center
+  ctx.beginPath();
+  ctx.arc(cx, cy, HEALTH_ARC_RADIUS, startAngle, endAngle);
+  ctx.strokeStyle = `rgba(130, 255, 130, 0.7)`;
+  ctx.lineWidth = 2;
   ctx.stroke();
 }
 

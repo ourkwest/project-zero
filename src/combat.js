@@ -4,7 +4,7 @@
 // Other clients lerp to the streamed positions and run collision against local ship.
 
 import { WEAPONS, createProjectile, updateProjectile, acquireTarget } from './weapons.js';
-import { spawnExplosion, spawnDeathExplosion } from './effects.js';
+import { spawnExplosion, spawnDeathExplosion, spawnFlash } from './effects.js';
 
 const ENERGY_REGEN_RATE = 0.12; // per second
 const MOVEMENT_ENERGY_RATE = 0.10; // per second at full thrust (slightly below regen)
@@ -56,6 +56,23 @@ export function updateCombat(combat, ship, dt, remotes, isFireHeld, thrustMag = 
   // Handle respawn timer
   if (combat.dead) {
     combat.respawnTimer -= dt;
+    // Still update projectiles in flight
+    const targets = remotes.map((r, i) => ({ id: i, x: r.x, y: r.y }));
+    for (let i = combat.projectiles.length - 1; i >= 0; i--) {
+      const p = combat.projectiles[i];
+      updateProjectile(p, dt, targets);
+      if (p.life <= 0) { spawnFlash(p.x, p.y); combat.projectiles.splice(i, 1); }
+    }
+    for (let i = combat.remoteProjectiles.length - 1; i >= 0; i--) {
+      const p = combat.remoteProjectiles[i];
+      if (p.tx != null) {
+        const t = 1 - Math.exp(-LERP_RATE * dt);
+        p.x += (p.tx - p.x) * t;
+        p.y += (p.ty - p.y) * t;
+      }
+      p.life -= dt;
+      if (p.life <= 0) { spawnFlash(p.x, p.y); combat.remoteProjectiles.splice(i, 1); }
+    }
     if (combat.respawnTimer <= 0) {
       combat.dead = false;
       combat.health = 1;
@@ -82,11 +99,10 @@ export function updateCombat(combat, ship, dt, remotes, isFireHeld, thrustMag = 
   const targets = remotes.map((r, i) => ({ id: i, x: r.x, y: r.y }));
   for (let i = combat.projectiles.length - 1; i >= 0; i--) {
     const p = combat.projectiles[i];
-    p.age += dt;
     updateProjectile(p, dt, targets);
     if (p.life <= 0) { spawnExplosion(p.x, p.y, 0.02); combat.projectiles.splice(i, 1); continue; }
     // Self-damage (after grace period)
-    if (p.age > 0.3) {
+    if (p.maxLife - p.life > 0.3) {
       const dx = p.x - ship.x;
       const dy = p.y - ship.y;
       if (dx * dx + dy * dy < (SHIP_RADIUS + p.size) ** 2) {
@@ -106,7 +122,7 @@ export function updateCombat(combat, ship, dt, remotes, isFireHeld, thrustMag = 
       p.y += (p.ty - p.y) * t;
     }
     p.life -= dt;
-    if (p.life <= 0) { spawnExplosion(p.x, p.y, 0.02); combat.remoteProjectiles.splice(i, 1); }
+    if (p.life <= 0) { spawnFlash(p.x, p.y); combat.remoteProjectiles.splice(i, 1); }
   }
 
   // Collision: remote projectiles hitting local ship

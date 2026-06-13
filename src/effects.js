@@ -64,14 +64,17 @@ export function updateEffects(dt) {
         const dx = p.cx - p.x;
         const dy = p.cy - p.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > 2) {
+        if (dist > 5) {
           const collapseProgress = (elapsed - EXPAND_TIME) / COLLAPSE_TIME;
           const strength = 800 + collapseProgress * 2000;
           p.vx += (dx / dist) * strength * dt;
           p.vy += (dy / dist) * strength * dt;
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+        } else {
+          // Snapped to center — kill it early
+          p.life = 0;
         }
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
       }
     } else {
       p.x += p.vx * dt;
@@ -86,7 +89,22 @@ export function updateEffects(dt) {
     flashes[i].life -= dt;
     if (flashes[i].life <= 0) flashes.splice(i, 1);
   }
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    ripples[i].life -= dt;
+    if (ripples[i].life <= 0) ripples.splice(i, 1);
+  }
 }
+
+const ripples = [];
 
 export function getParticles() { return particles; }
 export function getFlashes() { return flashes; }
+export function getRipples() { return ripples; }
+
+export function spawnFlash(x, y) {
+  flashes.push({ x, y, life: 0.12, maxLife: 0.12, radius: 15 });
+}
+
+export function spawnRipple(x, y) {
+  ripples.push({ x, y, life: 0.4, maxLife: 0.4, radius: 30 });
+}

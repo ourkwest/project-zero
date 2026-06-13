@@ -31,6 +31,8 @@ export function createProjectile(ship, weapon, index, lockedTargetId) {
   // Launch speed randomized slightly for shotgun
   const speedJitter = weapon.randomSpread ? 1 + (Math.random() - 0.5) * 0.2 : 1;
   const launchSpeed = weapon.launchSpeed * speedJitter;
+  const lifeJitter = weapon.randomSpread ? 1 + (Math.random() - 0.5) * 0.4 : 1;
+  const life = (weapon.lifetime || 3) * lifeJitter;
   return {
     id: nextId++,
     x: ship.x + cos * 25,
@@ -42,8 +44,8 @@ export function createProjectile(ship, weapon, index, lockedTargetId) {
     damage: weapon.damage,
     homing: !!weapon.homingAccel,
     homingAccel: weapon.homingAccel || 0,
-    life: weapon.lifetime || 3,
-    age: 0,
+    life,
+    maxLife: life,
     targetId: lockedTargetId ?? null,
   };
 }
